@@ -1,0 +1,4 @@
+name = "AutoML"
+uuid = "9cb3cefc-9d74-11e9-126a-fdc13771fa31"
+authors = ["alperkesen <kesen.alper@gmail.com>"]
+version = "0.1.0"
