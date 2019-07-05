@@ -2,3 +2,9 @@ name = "AutoML"
 uuid = "9cb3cefc-9d74-11e9-126a-fdc13771fa31"
 authors = ["alperkesen <kesen.alper@gmail.com>"]
 version = "0.1.0"
+
+[deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Knet = "1902f260-5fb4-5aff-8c31-6271790ab950"
