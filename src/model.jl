@@ -32,7 +32,7 @@ end
 
 mutable struct Model
     config::Config;
-    weights::Chain;
+    model
     savepath::String
 end
 
@@ -43,8 +43,14 @@ Model(inputs::Array{Tuple{String, String},1},
 
 getfeatures(m::Model; ftype="all") = getfeatures(m.config; ftype=ftype)
 
-function csv2data(csvfile)
-    df = CSV.read(csvfile)
+function csv2data(csvpath::String)
+    df = CSV.read(csvpath)
+    fnames = names(df)
+    data = Dict(String(fname) => Array(df[fname])
+                for fname in fnames)
+end
+
+function csv2data(df::DataFrames.DataFrame)
     fnames = names(df)
     data = Dict(String(fname) => Array(df[fname])
                 for fname in fnames)
@@ -72,13 +78,20 @@ function preprocess(data, features)
         elseif ftype == "Int"
             preprocessed[fname] = Int.(data[fname])
         elseif ftype == "Float"
-            if eltype(data[fname]) != Float64
-                preprocessed[fname] = map(x->parse(Float64, x), data[fname])   
+            if eltype(data[fname]) == String
+                preprocessed[fname] = map(x->parse(Float64, x), data[fname])
+            elseif eltype(data[fname]) == Int
+                preprocessed[fname] = Float64.(data[fname])
+            else
+                preprocessed[fname] = data[fname]
             end
-        elseif ftype == "Binary"
-            preprocessed[fname] = data[fname] + 1
+        elseif ftype == "Binary Category"
+            preprocessed[fname] = data[fname] .+ 1
         elseif ftype == "Category"
             preprocessed[fname] = doc2ids(data[fname])
+        elseif ftype == "Image"
+            preprocessed[fname] = [Float64.(readimage(imagepath; dirpath="cifar_100"))
+                                   for imagepath in data[fname]]
         else
             preprocessed[fname] = data[fname]
         end
@@ -86,39 +99,55 @@ function preprocess(data, features)
     preprocessed
 end
 
-function train(m::Model, traindata, epochs=1)
+function train(m::Model, traindata; epochs=1)
     flist = getfeatures(m; ftype="all")
     outflist = getfeatures(m; ftype="output")
     inpflist = getfeatures(m; ftype="input")
+
+    inpftypes = [ftype for (fname, ftype) in inpflist]
+    outftypes = [ftype for (fname, ftype) in outflist]
+    
+    categorical = in("Category", outftypes) || in("Binary Category", outftypes)
+    imagemodel = in("Image", inpftypes)
+    sequencemodel = in("Text", inpftypes)
 
     trn = preprocess(traindata, flist)
 
     xtrn = Dict(fname => trn[fname] for (fname, ftype) in inpflist)
     ytrn = Dict(fname => trn[fname] for (fname, ftype) in outflist)
 
-    xtrn = hcat(slicematrix(hcat(values(xtrn)...))...)
+    if imagemodel
+        catdim = 4
+        xtrn = Array(cat(collect(values(xtrn))[1]..., dims=catdim))
+    else
+        catdim = 2
+        xtrn = Array(cat(values(xtrn)..., dims=catdim)')
+    end
+
+    println(summary(xtrn))
     ytrn = slicematrix(hcat(values(ytrn)...))
+    dtrn = minibatch(xtrn, ytrn, 32; shuffle=true)
 
-    outtypes = [ftype for (fname, ftype) in outflist]
-    categorical = in("Category", outtypes) || in("Binary Category", outtypes)
-    
+    inputsize = size(xtrn, 1)
+    outputsize = size(ytrn, 1)
+    hiddensize = 20
+
     if !categorical
-        inputsize = size(xtrn, 1)
-        outputsize = size(ytrn, 1)
-        hiddensize = 20
-
         l1 = Layer(inputsize, hiddensize, 0.01, relu; pdrop=0)
         l2 = Layer(hiddensize, outputsize, 0.01, identity; pdrop=0)
-        m.weights = Chain(l1, l2)
-    
-        dtrn = minibatch(xtrn, ytrn, 32; shuffle=true)
-        progress!(adam(m.weights, repeat(dtrn, epochs)))
+        m.model = Chain(l1, l2)
+    elseif imagemodel && categorical
+        conv1 = Conv(5, 5, 3, 20)
+        l1 = Layer2(3920, 100, 0.01, identity; pdrop=0)
+        m.model = Chain2(conv1, l1)
     else
-        inputsize = size(xtrn, 1)
-        outputsize = size(ytrn, 1)
-        hiddensize = 20
-        dtrn = minibatch(xtrn, ytrn, 32; shuffle=true)
-        return xtrn, ytrn, dtrn, m
+        outputsize = length(unique(ytrn))
+        l1 = Layer(inputsize, hiddensize, 0.01, relu; pdrop=0)
+        l2 = Layer(hiddensize, outputsize, 0.01, identity; pdrop=0)
+        m.model = Chain2(l1, l2)
     end
+
+    progress!(adam(m.model, repeat(dtrn, epochs)))
+    m, dtrn
 end
 
