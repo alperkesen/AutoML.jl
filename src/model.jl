@@ -1,6 +1,6 @@
 import CSV
 using DataFrames
-using Knet: Param, nll, relu, adam, progress!, minibatch, mat, sumabs2
+using Knet: Param, nll, relu, adam, progress!, minibatch, mat, sumabs2, save
 
 DATATYPES = ["String",
              "Int",
@@ -145,6 +145,6 @@ function train(m::Model, traindata; epochs=1)
     end
 
     progress!(adam(m.model, repeat(dtrn, epochs)))
+    save(joinpath(SAVEDIR, "model.jld2"), "model", m.model)
     m, dtrn
 end
-
