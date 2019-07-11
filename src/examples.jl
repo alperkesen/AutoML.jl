@@ -1,7 +1,7 @@
 import AutoML
 import Random
 
-function train_house_rentals()
+function train_house_rentals(; epochs=1)
     house_rentals = AutoML.house_rentals()
     house_rentals_data = AutoML.csv2data(house_rentals)
     house_rentals_inputs = [("neighborhood", "String"),
@@ -13,19 +13,19 @@ function train_house_rentals()
                             ("sqft", "Float")]
     house_rentals_outputs = [("rental_price", "Float")]
     model = AutoML.Model(house_rentals_inputs, house_rentals_outputs)
-    result = AutoML.train(model, house_rentals_data; epochs=100)
+    result = AutoML.train(model, house_rentals_data; epochs=epochs)
 end
 
-function train_gene_sequences()
+function train_gene_sequences(; epochs=1)
     gene_sequences = AutoML.splice_junction()
     gene_sequences_data = AutoML.csv2data(gene_sequences)
     gene_sequences_inputs = [("attribute_$i", "Category") for i in 1:60]
     gene_sequences_outputs = [("Class", "Category")]
     model = AutoML.Model(gene_sequences_inputs, gene_sequences_outputs)
-    result = AutoML.train(model, gene_sequences_data; epochs=100)
+    result = AutoML.train(model, gene_sequences_data; epochs=epochs)
 end
 
-function train_cifar_100(; smallset=true)
+function train_cifar_100(; smallset=true, epochs=1)
     cifar_100 = AutoML.cifar_100()
     
     if smallset
@@ -37,34 +37,33 @@ function train_cifar_100(; smallset=true)
     cifar_100_inputs = [("image_path", "Image")]
     cifar_100_outputs = [("class", "Category")]
     model = AutoML.Model(cifar_100_inputs, cifar_100_outputs)
-    result = AutoML.train(model, cifar_100_data; epochs=100)
+    result = AutoML.train(model, cifar_100_data; epochs=epochs)
 end
 
-function train_imdb()
+function train_imdb(; epochs=1)
     imdb = AutoML.imdb_movie_review()
     imdb_data = AutoML.csv2data(imdb)
     imdb_inputs = [("review", "Text")]
     imdb_outputs = [("sentiment", "Category")]
     model = AutoML.Model(imdb_inputs, imdb_outputs)
-    result = AutoML.train(model, imdb_data; epochs=1)
+    result = AutoML.train(model, imdb_data; epochs=epochs)
 end
 
-function train_quora()
+function train_quora(; epochs=1)
     quora = AutoML.quora_questions()
     quora_data = AutoML.csv2data(quora)
     quora_inputs = [("question1", "Text"), ("question2", "Text")]
     quora_outputs = [("is_duplicate", "Binary Category")]
     model = AutoML.Model(quora_inputs, quora_outputs)
-    result = AutoML.train(model, quora_data; epochs=100)
+    result = AutoML.train(model, quora_data; epochs=epochs)
 end
 
-function train_default_of_credit()
+function train_default_of_credit(; epochs=1)
     credit = AutoML.default_of_credit()
     credit_data = AutoML.csv2data(credit)
     credit_inputs = [(x[1], "Int") for x in credit_data
                      if x != "default.payment.next.month"]
     credit_outputs = [("default.payment.next.month", "Binary Category")]
     model = AutoML.Model(credit_inputs, credit_outputs)
-    result = AutoML.train(model, credit_data; epochs=100)
+    result = AutoML.train(model, credit_data; epochs=epochs)
 end
-
