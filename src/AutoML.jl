@@ -5,8 +5,8 @@ const SAVEDIR = abspath(joinpath(DIR, "..", "models"))
 const DATADIR = abspath(joinpath(DIR, "..", "data"))
 
 include("layers.jl")
-include("model.jl")
 include("utils.jl")
+include("model.jl")
 include("examples.jl")
 
 end

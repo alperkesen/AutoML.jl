@@ -56,19 +56,6 @@ function csv2data(df::DataFrames.DataFrame)
                 for fname in fnames)
 end
 
-function doc2ids(data::Array{String,1})
-    dict = Dict{String, Int}()
-    pid = 1
-    
-    for x in data
-        if !haskey(dict, x)
-            dict[x] = pid
-            pid += 1
-        end
-    end
-    ids = [dict[x] for x in data]
-end
-
 function preprocess(data, features)
     preprocessed = Dict()
 
@@ -92,6 +79,8 @@ function preprocess(data, features)
         elseif ftype == "Image"
             preprocessed[fname] = [Float64.(readimage(imagepath; dirpath="cifar_100"))
                                    for imagepath in data[fname]]
+        elseif ftype == "Text"
+            preprocessed[fname] = preprocesstext(data[fname])
         else
             preprocessed[fname] = data[fname]
         end
@@ -116,15 +105,17 @@ function train(m::Model, traindata; epochs=1)
     xtrn = Dict(fname => trn[fname] for (fname, ftype) in inpflist)
     ytrn = Dict(fname => trn[fname] for (fname, ftype) in outflist)
 
+
     if imagemodel
-        catdim = 4
+        catdim = length(size(first(values(xtrn))[1])) + 1
         xtrn = Array(cat(collect(values(xtrn))[1]..., dims=catdim))
+    elseif sequencemodel
+        xtrn = collect(values(xtrn))[1]
     else
-        catdim = 2
+        catdim = length(size(first(values(xtrn)))) + 1
         xtrn = Array(cat(values(xtrn)..., dims=catdim)')
     end
 
-    println(summary(xtrn))
     ytrn = slicematrix(hcat(values(ytrn)...))
     dtrn = minibatch(xtrn, ytrn, 32; shuffle=true)
 
@@ -140,6 +131,14 @@ function train(m::Model, traindata; epochs=1)
         conv1 = Conv(5, 5, 3, 20)
         l1 = Layer2(3920, 100, 0.01, identity; pdrop=0)
         m.model = Chain2(conv1, l1)
+    elseif sequencemodel && categorical
+        voclen = 30000
+        embeddim = 10
+        hiddendim = 5
+        outputdim = 2
+        m.model = RNNClassifier(voclen, embeddim, hiddendim, outputdim;
+                                pdrop=0.5, scale=0.01)
+        print("Built!")
     else
         outputsize = length(unique(ytrn))
         l1 = Layer(inputsize, hiddensize, 0.01, relu; pdrop=0)
