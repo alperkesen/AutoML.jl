@@ -105,7 +105,6 @@ function train(m::Model, traindata; epochs=1)
     xtrn = Dict(fname => trn[fname] for (fname, ftype) in inpflist)
     ytrn = Dict(fname => trn[fname] for (fname, ftype) in outflist)
 
-
     if imagemodel
         catdim = length(size(first(values(xtrn))[1])) + 1
         xtrn = Array(cat(collect(values(xtrn))[1]..., dims=catdim))
@@ -133,12 +132,11 @@ function train(m::Model, traindata; epochs=1)
         m.model = Chain2(conv1, l1)
     elseif sequencemodel && categorical
         voclen = 30000
-        embeddim = 10
-        hiddendim = 5
+        embeddim = 100
+        hiddendim = 20
         outputdim = 2
         m.model = RNNClassifier(voclen, embeddim, hiddendim, outputdim;
                                 pdrop=0.5, scale=0.01)
-        print("Built!")
     else
         outputsize = length(unique(ytrn))
         l1 = Layer(inputsize, hiddensize, 0.01, relu; pdrop=0)
