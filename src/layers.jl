@@ -1,4 +1,4 @@
-using Knet: RNN, Param, relu, sumabs2, mat, conv4, pool, dropout, nll, gpu
+using Knet: KnetArray, RNN, Param, relu, sumabs2, mat, conv4, pool, dropout, nll, gpu
 using Statistics: mean
 
 
