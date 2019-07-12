@@ -96,7 +96,15 @@ function (c::RNNClassifier2)(input)
 
     hiddenoutput1 = c.rnn(embed1)
     hiddenoutput2 = c.rnn(embed2)
-    hiddenoutput = dropout(vcat(hiddenoutput1, hiddenoutput2), c.pdrop)
+
+    H, B, W = size(hiddenoutput1)
+
+    hiddenoutput1 = reshape(hiddenoutput1, H, :)
+    hiddenoutput2 = reshape(hiddenoutput2, H, :)
+
+    hiddenoutput = vcat(hiddenoutput1, hiddenoutput2)
+    hiddenoutput = reshape(hiddenoutput, 2H, B, W)
+    hiddenoutput = dropout(hiddenoutput, c.pdrop)
 
     return c.output * hiddenoutput[:,:,end] .+ c.b
 end
