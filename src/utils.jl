@@ -1,4 +1,5 @@
 using CSV
+using DataFrames
 using Images: load
 
 STOPWORDS = ["this", "is", "a", "an", "the",
@@ -157,4 +158,49 @@ function preprocesstext(xtrn; padding="pre", freqthreshold=10, trunclen=300)
 
     xtrn_ids = addpadding!(doc2ids(xtrn, voc), pos=padding)
     xtrn_ids = truncate!(xtrn_ids, trunclen, pos=padding)
+end
+
+function csv2data(csvpath::String)
+    df = CSV.read(csvpath)
+    fnames = names(df)
+    data = Dict(String(fname) => Array(df[fname])
+                for fname in fnames)
+end
+
+function csv2data(df::DataFrames.DataFrame)
+    fnames = names(df)
+    data = Dict(String(fname) => Array(df[fname])
+                for fname in fnames)
+end
+
+function preprocess(data, features)
+    preprocessed = Dict()
+
+    for (fname, ftype) in features
+        if ftype == "String"
+            preprocessed[fname] = doc2ids(data[fname])
+        elseif ftype == "Int"
+            preprocessed[fname] = Int.(data[fname])
+        elseif ftype == "Float"
+            if eltype(data[fname]) == String
+                preprocessed[fname] = map(x->parse(Float64, x), data[fname])
+            elseif eltype(data[fname]) == Int
+                preprocessed[fname] = Float64.(data[fname])
+            else
+                preprocessed[fname] = data[fname]
+            end
+        elseif ftype == "Binary Category"
+            preprocessed[fname] = data[fname] .+ 1
+        elseif ftype == "Category"
+            preprocessed[fname] = doc2ids(data[fname])
+        elseif ftype == "Image"
+            preprocessed[fname] = [Float64.(readimage(imagepath; dirpath="cifar_100"))
+                                   for imagepath in data[fname]]
+        elseif ftype == "Text"
+            preprocessed[fname] = preprocesstext(data[fname])
+        else
+            preprocessed[fname] = data[fname]
+        end
+    end
+    preprocessed
 end

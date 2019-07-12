@@ -2,11 +2,11 @@ using Knet: KnetArray, RNN, Param, relu, sumabs2, mat, conv4, pool, dropout, nll
 using Statistics: mean
 
 
-
 struct Layer; w; b; f; pdrop; end
 
-Layer(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5, categorical=true) = Layer(
-    Param(scale * randn(o, i)), Param(zeros(o)), f, pdrop)
+Layer(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
+      atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) = Layer(
+    Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
 
 (l::Layer)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
 (l::Layer)(x, y) = sumabs2(y - l(x)) / size(y,2)
@@ -14,8 +14,9 @@ Layer(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5, categorical=true) = Layer(
 
 struct Layer2; w; b; f; pdrop; end
 
-Layer2(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5, categorical=true) = Layer2(
-    Param(scale * randn(o, i)), Param(zeros(o)), f, pdrop)
+Layer2(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
+       atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) = Layer2(
+    Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
 
 (l::Layer2)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
 (l::Layer2)(x, y) = nll(l(x), y)
@@ -41,9 +42,10 @@ end
 
 struct Conv; w; b; f; pdrop; end
 
-Conv(w1::Int, w2::Int, cx::Int, cy::Int, f=relu; pdrop=0, scale=0.01) =
-    Conv(Param(randn(w1, w2, cx, cy) * scale),
-         Param(zeros(1, 1, cy, 1)),
+Conv(w1::Int, w2::Int, cx::Int, cy::Int, f=relu; pdrop=0, scale=0.01,
+     atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) =
+    Conv(Param(atype(randn(w1, w2, cx, cy) * scale)),
+         Param(atype(zeros(1, 1, cy, 1))),
          f,
          pdrop)
 
@@ -52,9 +54,10 @@ Conv(w1::Int, w2::Int, cx::Int, cy::Int, f=relu; pdrop=0, scale=0.01) =
 
 struct RNNClassifier; input; rnn; output; b; pdrop; end
 
-RNNClassifier(input::Int, embed::Int, hidden::Int, output::Int; pdrop=0, scale=0.01, atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) =
+RNNClassifier(input::Int, embed::Int, hidden::Int, output::Int; pdrop=0, scale=0.01, atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}, rnnType=:gru, bidirectional=false) =
     RNNClassifier(Param(atype(randn(embed, input) * scale)),
-                  RNN(embed, hidden, rnnType=:gru, dataType=Float64),
+                  RNN(embed, hidden, rnnType=rnnType, dataType=Float64,
+                      bidirectional=bidirectional),
                   Param(atype(randn(output, hidden) * scale)),
                   Param(atype(zeros(output))),
                   pdrop)
