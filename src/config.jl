@@ -33,3 +33,9 @@ end
 function getfnames(c::Config; ftype="all")
     ftypes = [fname for (fname, ftype) in getfeatures(c; ftype=ftype)]
 end
+
+function getfdict(c::Config; ftype="all")
+    ftypes = getftypes(c::Config; ftype=ftype)
+    Dict(ftype => count(i->i==ftype, ftypes) for ftype in unique(ftypes))
+end
+                   

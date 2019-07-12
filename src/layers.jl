@@ -74,6 +74,36 @@ end
 (c::RNNClassifier)(input,output) = nll(c(input), output)
 
 
+struct RNNClassifier2; input; rnn; output; b; pdrop; end
+
+RNNClassifier2(input::Int, embed::Int, hidden::Int, output::Int; pdrop=0, scale=0.01, atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}, rnnType=:gru, bidirectional=true) =
+    RNNClassifier2(Param(atype(randn(embed, input) * scale)),
+                   RNN(embed, hidden, rnnType=rnnType, dataType=Float64,
+                      bidirectional=bidirectional),
+                   Param(atype(randn(output, 4hidden) * scale)),
+                   Param(atype(zeros(output))),
+                   pdrop)
+
+function (c::RNNClassifier2)(input)
+    input1 = hcat(input...)[1, :]
+    input2 = hcat(input...)[2, :]
+ 
+    embed1 = c.input[:, permutedims(hcat(input1...))]
+    embed1 = dropout(embed1, c.pdrop)
+
+    embed2 = c.input[:, permutedims(hcat(input1...))]
+    embed2 = dropout(embed2, c.pdrop)
+
+    hiddenoutput1 = c.rnn(embed1)
+    hiddenoutput2 = c.rnn(embed2)
+    hiddenoutput = dropout(vcat(hiddenoutput1, hiddenoutput2), c.pdrop)
+
+    return c.output * hiddenoutput[:,:,end] .+ c.b
+end
+
+(c::RNNClassifier2)(input,output) = nll(c(input), output)
+
+
 predict(model, x) = map(i->i[1], findmax(Array(model(x)),dims=1)[2])
 accuracy(model, x, y) = mean(y .== predict(model, x))
 accuracy(model, data) = mean(accuracy(model,x,y) for (x,y) in data)

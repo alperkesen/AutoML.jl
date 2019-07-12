@@ -25,6 +25,7 @@ end
 
 function quora_questions()
     df = CSV.read(joinpath(DATADIR, "quora_questions", "train.csv"))
+    dropmissing(df)
 end
 
 function default_of_credit()
@@ -94,22 +95,27 @@ function frequencies(x)
     freqs
 end
 
-function vocabulary(freqs, threshold=1)
-    vocabulary = Dict{String, Integer}()
-    vocabulary["<pad>"] = 1
-    pid = 2
+function vocabulary(freqs; defaultvoc=nothing, threshold=1)
+    if defaultvoc == nothing
+        vocabulary = Dict{String, Integer}()
+        vocabulary["<pad>"] = 1
+        vocabulary["<unk>"] = 2
+        pid = 3
+    else
+        vocabulary = defaultvoc
+        pid = length(defaultvoc) + 1
+    end
 
     frequency_order = sort([(freqs[word], word)
                             for word in keys(freqs)], rev=true)
 
     for (f, w) in frequency_order
-        if f >= threshold
+        if f >= threshold && !in(w, keys(vocabulary))
             vocabulary[w] = pid
             pid += 1
         end
     end
 
-    vocabulary["<unk>"] = pid
     vocabulary
 end
 
@@ -117,8 +123,12 @@ function maxsentence(x)
     maximum(length(doc) for doc in x)
 end
 
-function addpadding!(x; pos="post")
+function addpadding!(x; pos="post", paddinglen=nothing)
     max_length = maxsentence(x)
+
+    if paddinglen != nothing
+        max_length = paddinglen
+    end
 
     for doc in x
         while length(doc) < max_length
@@ -151,13 +161,16 @@ function doc2ids(x, voc)
            for doc in x]
 end
 
-function preprocesstext(xtrn; padding="pre", freqthreshold=10, trunclen=300)
+function preprocesstext(xtrn; padding="pre", freqthreshold=10, sentencelen=50,
+                        defaultvoc=nothing)
     xtrn = tokenize.(xtrn)
-    voc = vocabulary(frequencies(
-        skipwords(map(doc->map(lowercase, doc), xtrn))), freqthreshold)
+    freqs = frequencies(
+        skipwords(map(doc->map(lowercase, doc), xtrn)))
+    voc = vocabulary(freqs; threshold=freqthreshold, defaultvoc=defaultvoc)
 
-    xtrn_ids = addpadding!(doc2ids(xtrn, voc), pos=padding)
-    xtrn_ids = truncate!(xtrn_ids, trunclen, pos=padding)
+    xtrn_ids = addpadding!(doc2ids(xtrn, voc), pos=padding; paddinglen=sentencelen)
+    xtrn_ids = truncate!(xtrn_ids, sentencelen, pos=padding)
+    xtrn_ids, voc
 end
 
 function csv2data(csvpath::String)
@@ -173,7 +186,7 @@ function csv2data(df::DataFrames.DataFrame)
                 for fname in fnames)
 end
 
-function preprocess(data, features)
+function preprocess(data, features; defaultvoc=nothing)
     preprocessed = Dict()
 
     for (fname, ftype) in features
@@ -197,7 +210,9 @@ function preprocess(data, features)
             preprocessed[fname] = [Float64.(readimage(imagepath; dirpath="cifar_100"))
                                    for imagepath in data[fname]]
         elseif ftype == "Text"
-            preprocessed[fname] = preprocesstext(data[fname])
+            ids, voc = preprocesstext(data[fname]; defaultvoc=defaultvoc)
+            preprocessed[fname] = ids
+            defaultvoc = voc
         else
             preprocessed[fname] = data[fname]
         end

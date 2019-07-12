@@ -22,8 +22,14 @@ function buildimagemodel(inputsize, outputsize; cx=3, cy=20, wx=5, wy=5,
     Chain2(conv1, l1)
 end
 
-function buildtextmodel(inputsize, outputsize; voclen=30000, embedsize=100,
+function buildtextmodel(outputsize; voclen=30000, embedsize=100,
                         hiddensize=20, pdrop=0, scale=0.01)
     RNNClassifier(voclen, embedsize, hiddensize, outputsize;
                   pdrop=pdrop, scale=scale)
+end
+
+function buildtextmodel2(outputsize; voclen=30000, embedsize=100,
+                        hiddensize=20, pdrop=0, scale=0.01)
+    RNNClassifier2(voclen, embedsize, hiddensize, outputsize;
+                   pdrop=pdrop, scale=scale)
 end

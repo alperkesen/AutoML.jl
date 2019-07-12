@@ -35,7 +35,7 @@ function preparedata(m::Model, traindata)
         catdim = length(size(first(values(xtrn))[1])) + 1
         xtrn = Array(cat(collect(values(xtrn))[1]..., dims=catdim))
     elseif istextmodel(m)
-        xtrn = collect(values(xtrn))[1]
+        xtrn = AutoML.slicematrix(collect(hcat(values(xtrn)...)))
     else
         catdim = length(size(first(values(xtrn)))) + 1
         xtrn = Array(cat(values(xtrn)..., dims=catdim)')
@@ -47,11 +47,10 @@ end
 
 function train(m::Model, traindata; epochs=1, batchsize=32)
     xtrn, ytrn = preparedata(m, traindata)
-    dtrn = minibatch(xtrn, ytrn, batchsize; shuffle=true)    
+    dtrn = minibatch(xtrn, ytrn, batchsize; shuffle=true)
 
     inputsize = size(xtrn, 1)
     outputsize = size(ytrn, 1)
-
 
     if !iscategorical(m)
         m.model = buildlinearestimator(inputsize, outputsize)
@@ -61,7 +60,14 @@ function train(m::Model, traindata; epochs=1, batchsize=32)
         if isimagemodel(m)
             m.model = buildimagemodel(inputsize, outputsize)
         elseif istextmodel(m)
-            m.model = buildtextmodel(inputsize, outputsize)
+            fdict = getfdict(m.config, ftype="input")
+            numtexts = fdict["Text"]
+
+            if numtexts == 1
+                m.model = buildtextmodel(outputsize)
+            else
+                m.model = buildtextmodel2(outputsize)
+            end
         else
             m.model = buildclassificationmodel(inputsize, outputsize)
         end
