@@ -1,3 +1,4 @@
+import Random
 using CSV
 using DataFrames
 using Images: load
@@ -218,4 +219,11 @@ function preprocess(data, features; defaultvoc=nothing)
         end
     end
     preprocessed
+end
+
+function splitdata(df::DataFrames.DataFrame; trainprop=0.2)
+    examplesize = size(df, 1)
+    trainsize = Int(round(examplesize * trainprop))
+    indices = Random.shuffle(Random.seed!(0), Vector(1:examplesize))
+    trn, tst = df[indices[1:trainsize], :], df[indices[trainsize+1:end], :]
 end
