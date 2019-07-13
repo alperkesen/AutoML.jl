@@ -6,7 +6,7 @@ struct Layer; w; b; f; pdrop; end
 
 Layer(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
       atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) = Layer(
-    Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
+          Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
 
 (l::Layer)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
 (l::Layer)(x, y) = sumabs2(y - l(x)) / size(y,2)
@@ -16,7 +16,7 @@ struct Layer2; w; b; f; pdrop; end
 
 Layer2(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
        atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) = Layer2(
-    Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
+           Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
 
 (l::Layer2)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
 (l::Layer2)(x, y) = nll(l(x), y)
@@ -37,17 +37,17 @@ struct Chain
 end
 
 (c::Chain)(x) = (for l in c.layers; x = l(x); end; x)
-(c::Chain)(x, y) = loss = sumabs2(y - c(x)) / size(y,2)
+(c::Chain)(x, y) = sumabs2(y - c(x)) / size(y,2)
 
 
 struct Conv; w; b; f; pdrop; end
 
 Conv(w1::Int, w2::Int, cx::Int, cy::Int, f=relu; pdrop=0, scale=0.01,
      atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) =
-    Conv(Param(atype(randn(w1, w2, cx, cy) * scale)),
-         Param(atype(zeros(1, 1, cy, 1))),
-         f,
-         pdrop)
+         Conv(Param(atype(randn(w1, w2, cx, cy) * scale)),
+              Param(atype(zeros(1, 1, cy, 1))),
+              f,
+              pdrop)
 
 (c::Conv)(x) = c.f.(pool(conv4(c.w, dropout(x, c.pdrop)) .+ c.b))
 
@@ -79,7 +79,7 @@ struct RNNClassifier2; input; rnn; output; b; pdrop; end
 RNNClassifier2(input::Int, embed::Int, hidden::Int, output::Int; pdrop=0, scale=0.01, atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}, rnnType=:gru, bidirectional=true) =
     RNNClassifier2(Param(atype(randn(embed, input) * scale)),
                    RNN(embed, hidden, rnnType=rnnType, dataType=Float64,
-                      bidirectional=bidirectional),
+                       bidirectional=bidirectional),
                    Param(atype(randn(output, 4hidden) * scale)),
                    Param(atype(zeros(output))),
                    pdrop)
