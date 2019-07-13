@@ -3,7 +3,11 @@ import Random
 
 function train_house_rentals(; epochs=1)
     house_rentals = AutoML.house_rentals()
-    house_rentals_data = AutoML.csv2data(house_rentals)
+    trn, tst = splitdata(house_rentals; trainprop=0.2)
+
+    house_rentals_trn = AutoML.csv2data(trn)
+    house_rentals_tst = AutoML.csv2data(tst)
+
     house_rentals_inputs = [("neighborhood", "String"),
                             ("number_of_bathrooms", "Int"),
                             ("location", "String"),
@@ -12,17 +16,28 @@ function train_house_rentals(; epochs=1)
                             ("number_of_rooms", "Int"),
                             ("sqft", "Float")]
     house_rentals_outputs = [("rental_price", "Float")]
+
     model = AutoML.Model(house_rentals_inputs, house_rentals_outputs)
-    result = AutoML.train(model, house_rentals_data; epochs=epochs)
+    m = AutoML.train(model, house_rentals_trn; epochs=epochs)
+    m, house_rentals_trn, house_rentals_tst
 end
 
 function train_gene_sequences(; epochs=1)
     gene_sequences = AutoML.splice_junction()
-    gene_sequences_data = AutoML.csv2data(gene_sequences)
+    trn, tst = splitdata(gene_sequences; trainprop=0.2)
+
+    gene_sequences_trn = AutoML.csv2data(trn)
+    gene_sequences_tst = AutoML.csv2data(tst)
+
     gene_sequences_inputs = [("attribute_$i", "Category") for i in 1:60]
     gene_sequences_outputs = [("Class", "Category")]
+
     model = AutoML.Model(gene_sequences_inputs, gene_sequences_outputs)
-    result = AutoML.train(model, gene_sequences_data; epochs=epochs)
+    result = AutoML.train(model, gene_sequences_trn; epochs=epochs)
+
+    dtrn = minibatch(model, gene_sequences_trn)
+    dtst = minibatch(model, gene_sequences_tst)
+    model, dtrn, dtst
 end
 
 function train_cifar_100(; smallset=true, epochs=1)
