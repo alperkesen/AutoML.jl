@@ -53,7 +53,6 @@ end
 
 function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true)
     xtrn, ytrn = preparedata(m, traindata)
-    dtrn = minibatch(xtrn, ytrn, batchsize; shuffle=shuffle)
 
     inputsize = size(xtrn, 1)
     outputsize = size(ytrn, 1)
@@ -70,15 +69,16 @@ function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true)
             numtexts = fdict["Text"]
 
             if numtexts == 1
-                m.model = buildsentimentanalysis(outputsize)
+                m.model = buildsentimentanalysis(outputsize; pdrop=0.5)
             else
-                m.model = buildquestionmatching(outputsize)
+                m.model = buildquestionmatching(outputsize; pdrop=0.5)
             end
         else
             m.model = buildclassificationmodel(inputsize, outputsize; pdrop=0.5)
         end
     end
 
+    dtrn = minibatch(xtrn, ytrn, batchsize; shuffle=shuffle)
     progress!(adam(m.model, repeat(dtrn, epochs)))
     save(joinpath(SAVEDIR, "model.jld2"), "model", m.model)
     m, dtrn
