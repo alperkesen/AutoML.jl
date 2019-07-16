@@ -41,14 +41,12 @@ function preparedata(m::Model, traindata; output=true)
         xtrn = Array(cat(values(xtrn)..., dims=catdim)')
         # trn = AutoML.slicematrix(collect(hcat(values(xtrn)...)))
         xtrn = float(xtrn)
+        xtrn = atype(xtrn)
     end
-
-    xtrn = atype(xtrn)
 
     if output
         ytrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="output"))
         ytrn = slicematrix(hcat(values(ytrn)...))
-        ytrn = atype(ytrn)
 
         return xtrn, ytrn
     else
