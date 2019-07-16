@@ -21,16 +21,24 @@ function cifar_100()
 end
 
 function imdb_movie_review()
-    df = CSV.read(joinpath(DATADIR, "imdb_movie_review", "train.tsv"))
+    trn = CSV.read(joinpath(DATADIR, "imdb_movie_review", "train.tsv"))
+    tst = CSV.read(joinpath(DATADIR, "imdb_movie_review", "test.tsv"))
+    trn, tst
 end
 
 function quora_questions()
-    df = CSV.read(joinpath(DATADIR, "quora_questions", "train.csv"))
-    dropmissing(df)
+    trn = CSV.read(joinpath(DATADIR, "quora_questions", "train.csv"))
+    trn = dropmissing(trn)
+
+    tst = CSV.read(joinpath(DATADIR, "quora_questions", "test.csv"))
+    tst = dropmissing(tst)
+    trn, tst
 end
 
 function default_of_credit()
-    df = CSV.read(joinpath(DATADIR, "default_of_credit", "train.csv"))
+    trn = CSV.read(joinpath(DATADIR, "default_of_credit", "train.csv"))
+    tst = CSV.read(joinpath(DATADIR, "default_of_credit", "test.csv"))
+    trn, tst
 end
 
 function slicematrix(A::AbstractMatrix{T}) where T
@@ -204,7 +212,11 @@ function preprocess(data, features; defaultvoc=nothing)
                 preprocessed[fname] = data[fname]
             end
         elseif ftype == "Binary Category"
-            preprocessed[fname] = data[fname] .+ 1
+            if eltype(data[fname]) != Int
+                preprocessed[fname] = map(x->parse(Int64, x), data[fname]) .+ 1
+            else
+                preprocessed[fname] = data[fname] .+ 1
+            end
         elseif ftype == "Category"
             preprocessed[fname] = doc2ids(data[fname])
         elseif ftype == "Image"
@@ -221,7 +233,7 @@ function preprocess(data, features; defaultvoc=nothing)
     preprocessed
 end
 
-function splitdata(df::DataFrames.DataFrame; trainprop=0.2)
+function splitdata(df::DataFrames.DataFrame; trainprop=0.8)
     examplesize = size(df, 1)
     trainsize = Int(round(examplesize * trainprop))
     indices = Random.shuffle(Random.seed!(0), Vector(1:examplesize))
