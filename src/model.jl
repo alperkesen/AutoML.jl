@@ -1,4 +1,4 @@
-using Knet: adam, progress!, minibatch, save, relu
+using Knet: KnetArray, adam, progress!, minibatch, save, relu, gpu
 
 mutable struct Model
     config::Config;
@@ -27,6 +27,7 @@ istextmodel(m::Model) = in("Text", getftypes(m; ftype="input"))
 function preparedata(m::Model, traindata; output=true)
     featurelist = getfeatures(m; ftype="all")
     trn = preprocess(traindata, featurelist)
+    atype = gpu() >= 0 ? KnetArray{Float64} : Array{Float64}
     
     xtrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="input"))
 
@@ -42,9 +43,13 @@ function preparedata(m::Model, traindata; output=true)
         xtrn = float(xtrn)
     end
 
+    xtrn = atype(xtrn)
+
     if output
         ytrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="output"))
         ytrn = slicematrix(hcat(values(ytrn)...))
+        ytrn = atype(ytrn)
+
         return xtrn, ytrn
     else
         return xtrn

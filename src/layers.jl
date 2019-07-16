@@ -8,7 +8,7 @@ Layer(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
       atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) = Layer(
           Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
 
-(l::Layer)(x) = l.f.(l.w * mat(dropout(atype(x), l.pdrop)) .+ l.b)
+(l::Layer)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
 (l::Layer)(x, y) = sumabs2(y - l(x)) / size(y,2)
 
 
@@ -18,7 +18,7 @@ Layer2(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
        atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) = Layer2(
            Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
 
-(l::Layer2)(x) = l.f.(l.w * mat(dropout(atype(x), l.pdrop)) .+ l.b)
+(l::Layer2)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
 (l::Layer2)(x, y) = nll(l(x), y)
 
 
