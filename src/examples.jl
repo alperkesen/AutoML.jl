@@ -3,7 +3,7 @@ import Random
 
 function train_house_rentals(; epochs=1)
     house_rentals = AutoML.house_rentals()
-    trn, tst = splitdata(house_rentals; trainprop=0.2)
+    trn, tst = splitdata(house_rentals; trainprop=0.8)
 
     house_rentals_trn = AutoML.csv2data(trn)
     house_rentals_tst = AutoML.csv2data(tst)
@@ -18,25 +18,39 @@ function train_house_rentals(; epochs=1)
     house_rentals_outputs = [("rental_price", "Float")]
 
     model = AutoML.Model(house_rentals_inputs, house_rentals_outputs)
-    m = AutoML.train(model, house_rentals_trn; epochs=epochs)
-    m, house_rentals_trn, house_rentals_tst
+    result = AutoML.train(model, house_rentals_trn; epochs=epochs)
+
+    xtrn, ytrn = preparedata(model, house_rentals_trn)
+    xtst, ytst = preparedata(model, house_rentals_tst)
+
+    println("Train error:")
+    println(model.model(xtrn, ytrn))
+
+    println("Test error:")
+    println(model.model(xtst, ytst))
+
+    model, xtrn, ytrn, xtst, ytst
 end
 
 function train_gene_sequences(; epochs=1)
     gene_sequences = AutoML.splice_junction()
-    trn, tst = splitdata(gene_sequences; trainprop=0.2)
+    trn, tst = splitdata(gene_sequences; trainprop=0.8)
 
-    gene_sequences_trn = AutoML.csv2data(trn)
-    gene_sequences_tst = AutoML.csv2data(tst)
+    gen_trn = AutoML.csv2data(trn)
+    gen_tst = AutoML.csv2data(tst)
 
     gene_sequences_inputs = [("attribute_$i", "Category") for i in 1:60]
     gene_sequences_outputs = [("Class", "Category")]
 
     model = AutoML.Model(gene_sequences_inputs, gene_sequences_outputs)
-    result = AutoML.train(model, gene_sequences_trn; epochs=epochs)
+    result = AutoML.train(model, gen_trn; epochs=epochs)
 
-    dtrn = minibatch(model, gene_sequences_trn)
-    dtst = minibatch(model, gene_sequences_tst)
+    xtrn, ytrn = preparedata(model, gen_trn)
+    dtrn = minibatch(xtrn, ytrn, 32; shuffle=true)
+
+    xtst, ytst = preparedata(model, gen_tst)
+    dtst = minibatch(xtst, ytst, 32; shuffle=true)
+
     model, dtrn, dtst
 end
 
@@ -56,29 +70,54 @@ function train_cifar_100(; smallset=true, epochs=1)
 end
 
 function train_imdb(; epochs=1)
-    imdb = AutoML.imdb_movie_review()
-    imdb_data = AutoML.csv2data(imdb)
+    imdb_train, imdb_test = AutoML.imdb_movie_review()
+
+    imdb_trn = AutoML.csv2data(imdb_train)
+    imdb_tst = AutoML.csv2data(imdb_test)
+
     imdb_inputs = [("review", "Text")]
     imdb_outputs = [("sentiment", "Category")]
+
     model = AutoML.Model(imdb_inputs, imdb_outputs)
-    result = AutoML.train(model, imdb_data; epochs=epochs)
+    result = AutoML.train(model, imdb_trn; epochs=epochs)
 end
 
 function train_quora(; epochs=1)
-    quora = AutoML.quora_questions()
-    quora_data = AutoML.csv2data(quora)
+    quora_train, quora_test = AutoML.quora_questions()
+    quora_trn = AutoML.csv2data(quora_train)
+    quora_tst = AutoML.csv2data(quora_test[2:end, :])
+
     quora_inputs = [("question1", "Text"), ("question2", "Text")]
     quora_outputs = [("is_duplicate", "Binary Category")]
+
     model = AutoML.Model(quora_inputs, quora_outputs)
-    result = AutoML.train(model, quora_data; epochs=epochs)
+    result = AutoML.train(model, quora_trn; epochs=epochs)
+
+    xtrn, ytrn = preparedata(model, quora_trn)
+    dtrn = minibatch(xtrn, ytrn, 32; shuffle=true)
+
+    xtst, ytst = preparedata(model, quora_tst)
+    dtst = minibatch(xtst, ytst, 32; shuffle=true)
+
+    model, dtrn, dtst
 end
 
 function train_default_of_credit(; epochs=1)
-    credit = AutoML.default_of_credit()
-    credit_data = AutoML.csv2data(credit)
-    credit_inputs = [(x[1], "Int") for x in credit_data
+    credit_train, credit_test = AutoML.default_of_credit()
+    credit_trn = AutoML.csv2data(credit_train)
+    credit_tst = AutoML.csv2data(credit_test)
+    
+    credit_inputs = [(x[1], "Int") for x in credit_trn
                      if x != "default.payment.next.month"]
     credit_outputs = [("default.payment.next.month", "Binary Category")]
     model = AutoML.Model(credit_inputs, credit_outputs)
-    result = AutoML.train(model, credit_data; epochs=epochs)
+    result = AutoML.train(model, credit_trn; epochs=epochs)
+
+    xtrn, ytrn = preparedata(model, credit_trn)
+    dtrn = minibatch(xtrn, ytrn, 32; shuffle=true)
+
+    xtst, ytst = preparedata(model, credit_tst)
+    dtst = minibatch(xtst, ytst, 32; shuffle=true)
+
+    model, dtrn, dtst
 end
