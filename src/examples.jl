@@ -80,6 +80,14 @@ function train_imdb(; epochs=1)
 
     model = AutoML.Model(imdb_inputs, imdb_outputs)
     result = AutoML.train(model, imdb_trn; epochs=epochs)
+
+    xtrn, ytrn = preparedata(model, quora_trn)
+    dtrn = minibatch(xtrn, ytrn, 32; shuffle=true)
+
+    xtst, ytst = preparedata(model, quora_tst)
+    dtst = minibatch(xtst, ytst, 32; shuffle=true)
+
+    model, dtrn, dtst
 end
 
 function train_quora(; epochs=1)
