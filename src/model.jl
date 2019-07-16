@@ -39,15 +39,17 @@ function preparedata(m::Model, traindata)
     else
         catdim = length(size(first(values(xtrn)))) + 1
         xtrn = Array(cat(values(xtrn)..., dims=catdim)')
+        # trn = AutoML.slicematrix(collect(hcat(values(xtrn)...)))
+        xtrn = float(xtrn)
     end
 
     ytrn = slicematrix(hcat(values(ytrn)...))
     xtrn, ytrn
 end
 
-function train(m::Model, traindata; epochs=1, batchsize=32)
+function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true)
     xtrn, ytrn = preparedata(m, traindata)
-    dtrn = minibatch(xtrn, ytrn, batchsize; shuffle=true)
+    dtrn = minibatch(xtrn, ytrn, batchsize; shuffle=shuffle)
 
     inputsize = size(xtrn, 1)
     outputsize = size(ytrn, 1)
@@ -58,21 +60,21 @@ function train(m::Model, traindata; epochs=1, batchsize=32)
         outputsize = length(unique(ytrn))
 
         if isimagemodel(m)
-            m.model = buildimagemodel(inputsize, outputsize)
+            m.model = buildimageclassification(inputsize, outputsize)
         elseif istextmodel(m)
             fdict = getfdict(m.config, ftype="input")
             numtexts = fdict["Text"]
 
             if numtexts == 1
-                m.model = buildtextmodel(outputsize)
+                m.model = buildsentimentanalysis(outputsize)
             else
-                m.model = buildtextmodel2(outputsize)
+                m.model = buildquestionmatching(outputsize)
             end
         else
-            m.model = buildclassificationmodel(inputsize, outputsize)
+            m.model = buildclassificationmodel(inputsize, outputsize; pdrop=0.5)
         end
     end
-    
+
     progress!(adam(m.model, repeat(dtrn, epochs)))
     save(joinpath(SAVEDIR, "model.jld2"), "model", m.model)
     m, dtrn
