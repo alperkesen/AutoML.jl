@@ -197,8 +197,10 @@ end
 
 function preprocess(data, features; defaultvoc=nothing)
     preprocessed = Dict()
+    commonfeatures = [(fname, ftype) for (fname, ftype) in features
+                      if in(fname, keys(data))]
 
-    for (fname, ftype) in features
+    for (fname, ftype) in commonfeatures
         if ftype == "String"
             preprocessed[fname] = doc2ids(data[fname])
         elseif ftype == "Int"

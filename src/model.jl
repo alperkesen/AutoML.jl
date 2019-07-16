@@ -24,12 +24,11 @@ isimagemodel(m::Model) = in("Image", getftypes(m; ftype="input"))
 istextmodel(m::Model) = in("Text", getftypes(m; ftype="input"))
 
 
-function preparedata(m::Model, traindata)
+function preparedata(m::Model, traindata; output=true)
     featurelist = getfeatures(m; ftype="all")
     trn = preprocess(traindata, featurelist)
     
     xtrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="input"))
-    ytrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="output"))
 
     if isimagemodel(m)
         catdim = length(size(first(values(xtrn))[1])) + 1
@@ -43,8 +42,13 @@ function preparedata(m::Model, traindata)
         xtrn = float(xtrn)
     end
 
-    ytrn = slicematrix(hcat(values(ytrn)...))
-    xtrn, ytrn
+    if output
+        ytrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="output"))
+        ytrn = slicematrix(hcat(values(ytrn)...))
+        return xtrn, ytrn
+    else
+        return xtrn
+    end
 end
 
 function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true)
@@ -78,5 +82,16 @@ function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true)
     progress!(adam(m.model, repeat(dtrn, epochs)))
     save(joinpath(SAVEDIR, "model.jld2"), "model", m.model)
     m, dtrn
+end
+
+function predictdata(m::Model, example)
+    data = Dict(fname => [value] for (fname, value) in example)
+    x = preparedata(m, data; output=false)
+
+    if iscategorical(m)
+        return predict(m.model, x)
+    else
+        return m.model(x)
+    end
 end
 
