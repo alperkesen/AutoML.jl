@@ -8,7 +8,7 @@ Layer(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
       atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) = Layer(
           Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
 
-(l::Layer)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
+(l::Layer)(x) = l.f.(l.w * mat(dropout(atype(x), l.pdrop)) .+ l.b)
 (l::Layer)(x, y) = sumabs2(y - l(x)) / size(y,2)
 
 
@@ -18,7 +18,7 @@ Layer2(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
        atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) = Layer2(
            Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
 
-(l::Layer2)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
+(l::Layer2)(x) = l.f.(l.w * mat(dropout(atype(x), l.pdrop)) .+ l.b)
 (l::Layer2)(x, y) = nll(l(x), y)
 
 
@@ -115,16 +115,16 @@ end
 struct TwoLayerBiRNN; input; rnn; rnn2; output; b; pdrop; end
 
 TwoLayerBiRNN(input::Int, embed::Int, hidden1::Int, hidden2::Int,
-               output::Int; pdrop=0, scale=0.01,
-               atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64},
-               rnnType=:gru, bidirectional=false) = TwoLayerBiRNN(
-                   Param(atype(randn(embed, input) * scale)),
-                   RNN(embed, hidden1, rnnType=rnnType, dataType=Float64,
-                       bidirectional=bidirectional),
-                   RNN(2hidden1, hidden2, rnnType=rnnType, dataType=Float64,                       bidirectional=bidirectional),
-                   Param(atype(randn(output, 2hidden2) * scale)),
-                   Param(atype(zeros(output))),
-                   pdrop)
+              output::Int; pdrop=0, scale=0.01,
+              atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64},
+              rnnType=:gru, bidirectional=false) = TwoLayerBiRNN(
+                  Param(atype(randn(embed, input) * scale)),
+                  RNN(embed, hidden1, rnnType=rnnType, dataType=Float64,
+                      bidirectional=bidirectional),
+                  RNN(2hidden1, hidden2, rnnType=rnnType, dataType=Float64,                       bidirectional=bidirectional),
+                  Param(atype(randn(output, 2hidden2) * scale)),
+                  Param(atype(zeros(output))),
+                  pdrop)
 
 function (c::TwoLayerBiRNN)(input)
     embed = c.input[:, permutedims(hcat(input...))]

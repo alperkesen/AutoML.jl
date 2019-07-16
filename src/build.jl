@@ -31,7 +31,7 @@ end
 function buildquestionmatching(outputsize; voclen=30000, embedsize=100,
                                hiddensize=20, pdrop=0, scale=0.01)
     TwoTextsClassifier(voclen, embedsize, hiddensize, outputsize;
-                       pdrop=pdrop, scale=scale)
+                       pdrop=pdrop, scale=scale, rnnType=:lstm)
 end
 
 function buildgenesequence(outputsize; voclen=10, embedsize=4,
