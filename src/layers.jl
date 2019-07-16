@@ -52,17 +52,17 @@ Conv(w1::Int, w2::Int, cx::Int, cy::Int, f=relu; pdrop=0, scale=0.01,
 (c::Conv)(x) = c.f.(pool(conv4(c.w, dropout(x, c.pdrop)) .+ c.b))
 
 
-struct RNNClassifier; input; rnn; output; b; pdrop; end
+struct OneLayerBiRNN; input; rnn; output; b; pdrop; end
 
-RNNClassifier(input::Int, embed::Int, hidden::Int, output::Int; pdrop=0, scale=0.01, atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}, rnnType=:gru, bidirectional=false) =
-    RNNClassifier(Param(atype(randn(embed, input) * scale)),
+OneLayerBiRNN(input::Int, embed::Int, hidden::Int, output::Int; pdrop=0, scale=0.01, atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}, rnnType=:gru, bidirectional=false) =
+    OneLayerBiRNN(Param(atype(randn(embed, input) * scale)),
                   RNN(embed, hidden, rnnType=rnnType, dataType=Float64,
                       bidirectional=bidirectional),
                   Param(atype(randn(output, hidden) * scale)),
                   Param(atype(zeros(output))),
                   pdrop)
 
-function (c::RNNClassifier)(input)
+function (c::OneLayerBiRNN)(input)
     embed = c.input[:, permutedims(hcat(input...))]
     embed = dropout(embed, c.pdrop)
     hiddenoutput = c.rnn(embed)
@@ -71,20 +71,20 @@ function (c::RNNClassifier)(input)
     return c.output * hiddenoutput[:,:,end] .+ c.b
 end
 
-(c::RNNClassifier)(input,output) = nll(c(input), output)
+(c::OneLayerBiRNN)(input,output) = nll(c(input), output)
 
 
-struct RNNClassifier2; input; rnn; output; b; pdrop; end
+struct TwoTextsClassifier; input; rnn; output; b; pdrop; end
 
-RNNClassifier2(input::Int, embed::Int, hidden::Int, output::Int; pdrop=0, scale=0.01, atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}, rnnType=:gru, bidirectional=true) =
-    RNNClassifier2(Param(atype(randn(embed, input) * scale)),
-                   RNN(embed, hidden, rnnType=rnnType, dataType=Float64,
-                       bidirectional=bidirectional),
-                   Param(atype(randn(output, 4hidden) * scale)),
-                   Param(atype(zeros(output))),
-                   pdrop)
+TwoTextsClassifier(input::Int, embed::Int, hidden::Int, output::Int; pdrop=0, scale=0.01, atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}, rnnType=:gru, bidirectional=true) =
+    TwoTextsClassifier(Param(atype(randn(embed, input) * scale)),
+                       RNN(embed, hidden, rnnType=rnnType, dataType=Float64,
+                           bidirectional=bidirectional),
+                       Param(atype(randn(output, 4hidden) * scale)),
+                       Param(atype(zeros(output))),
+                       pdrop)
 
-function (c::RNNClassifier2)(input)
+function (c::TwoTextsClassifier)(input)
     input1 = hcat(input...)[1, :]
     input2 = hcat(input...)[2, :]
  
@@ -109,7 +109,35 @@ function (c::RNNClassifier2)(input)
     return c.output * hiddenoutput[:,:,end] .+ c.b
 end
 
-(c::RNNClassifier2)(input,output) = nll(c(input), output)
+(c::TwoTextsClassifier)(input,output) = nll(c(input), output)
+
+
+struct TwoLayerBiRNN; input; rnn; rnn2; output; b; pdrop; end
+
+TwoLayerBiRNN(input::Int, embed::Int, hidden1::Int, hidden2::Int,
+               output::Int; pdrop=0, scale=0.01,
+               atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64},
+               rnnType=:gru, bidirectional=false) = TwoLayerBiRNN(
+                   Param(atype(randn(embed, input) * scale)),
+                   RNN(embed, hidden1, rnnType=rnnType, dataType=Float64,
+                       bidirectional=bidirectional),
+                   RNN(2hidden1, hidden2, rnnType=rnnType, dataType=Float64,                       bidirectional=bidirectional),
+                   Param(atype(randn(output, 2hidden2) * scale)),
+                   Param(atype(zeros(output))),
+                   pdrop)
+
+function (c::TwoLayerBiRNN)(input)
+    embed = c.input[:, permutedims(hcat(input...))]
+    embed = dropout(embed, c.pdrop)
+    hiddenoutput = c.rnn(embed)
+    hiddenoutput = dropout(hiddenoutput, c.pdrop)
+    hiddenoutput2 = c.rnn2(hiddenoutput)
+    hiddenoutput2 = dropout(hiddenoutput2, c.pdrop)
+
+    return c.output * hiddenoutput2[:,:,end] .+ c.b
+end
+
+(c::TwoLayerBiRNN)(input,output) = nll(c(input), output)
 
 
 predict(model, x) = map(i->i[1], findmax(Array(model(x)),dims=1)[2])
