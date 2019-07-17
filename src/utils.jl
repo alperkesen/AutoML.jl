@@ -104,15 +104,15 @@ function frequencies(x)
     freqs
 end
 
-function vocabulary(freqs; defaultvoc=nothing, threshold=1)
-    if defaultvoc == nothing
+function vocabulary(freqs; voc=nothing, threshold=1)
+    if voc == nothing
         vocabulary = Dict{String, Integer}()
         vocabulary["<pad>"] = 1
         vocabulary["<unk>"] = 2
         pid = 3
     else
-        vocabulary = defaultvoc
-        pid = length(defaultvoc) + 1
+        vocabulary = voc
+        pid = length(voc) + 1
     end
 
     frequency_order = sort([(freqs[word], word)
@@ -171,11 +171,11 @@ function doc2ids(x, voc)
 end
 
 function preprocesstext(xtrn; padding="pre", freqthreshold=10, sentencelen=50,
-                        defaultvoc=nothing)
+                        voc=nothing)
     xtrn = tokenize.(xtrn)
     freqs = frequencies(
         skipwords(map(doc->map(lowercase, doc), xtrn)))
-    voc = vocabulary(freqs; threshold=freqthreshold, defaultvoc=defaultvoc)
+    voc = vocabulary(freqs; threshold=freqthreshold, voc=voc)
 
     xtrn_ids = addpadding!(doc2ids(xtrn, voc), pos=padding; paddinglen=sentencelen)
     xtrn_ids = truncate!(xtrn_ids, sentencelen, pos=padding)
@@ -195,49 +195,16 @@ function csv2data(df::DataFrames.DataFrame)
                 for fname in fnames)
 end
 
-function preprocess(data, features; defaultvoc=nothing)
-    preprocessed = Dict()
-    commonfeatures = [(fname, ftype) for (fname, ftype) in features
-                      if in(fname, keys(data))]
-
-    for (fname, ftype) in commonfeatures
-        if ftype == "String"
-            preprocessed[fname] = doc2ids(data[fname])
-        elseif ftype == "Int"
-            preprocessed[fname] = Int.(data[fname])
-        elseif ftype == "Float"
-            if eltype(data[fname]) == String
-                preprocessed[fname] = map(x->parse(Float64, x), data[fname])
-            elseif eltype(data[fname]) == Int
-                preprocessed[fname] = Float64.(data[fname])
-            else
-                preprocessed[fname] = data[fname]
-            end
-        elseif ftype == "Binary Category"
-            if eltype(data[fname]) != Int
-                preprocessed[fname] = map(x->parse(Int64, x), data[fname]) .+ 1
-            else
-                preprocessed[fname] = data[fname] .+ 1
-            end
-        elseif ftype == "Category"
-            preprocessed[fname] = doc2ids(data[fname])
-        elseif ftype == "Image"
-            preprocessed[fname] = [Float64.(readimage(imagepath; dirpath="cifar_100"))
-                                   for imagepath in data[fname]]
-        elseif ftype == "Text"
-            ids, voc = preprocesstext(data[fname]; defaultvoc=defaultvoc)
-            preprocessed[fname] = ids
-            defaultvoc = voc
-        else
-            preprocessed[fname] = data[fname]
-        end
-    end
-    preprocessed
-end
 
 function splitdata(df::DataFrames.DataFrame; trainprop=0.8)
     examplesize = size(df, 1)
     trainsize = Int(round(examplesize * trainprop))
     indices = Random.shuffle(Random.seed!(0), Vector(1:examplesize))
     trn, tst = df[indices[1:trainsize], :], df[indices[trainsize+1:end], :]
+end
+
+function kfolds(x::AbstractArray, k::Int)
+    n = size(x, 2)
+    s = n / k
+    folds = [x[:, round(Int64, (i-1)*s)+1:min(n,round(Int64, i*s))] for i=1:k]
 end
