@@ -8,27 +8,12 @@ Layer(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
       atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) = Layer(
           Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
 
-(l::Layer)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
-(l::Layer)(x, y) = sumabs2(y - l(x)) / size(y,2)
-
-
-struct Layer2; w; b; f; pdrop; end
-
-Layer2(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
-       atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) = Layer2(
-           Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
-
-(l::Layer2)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
-(l::Layer2)(x, y) = nll(l(x), y)
-
-
-struct Chain2
-    layers
-    Chain2(layers...) = new(layers)
+function (l::Layer)(x)
+    atype = gpu() >= 0 ? KnetArray : Array
+    output = l.f.(l.w * mat(dropout(atype(x), l.pdrop)) .+ l.b)
 end
 
-(c::Chain2)(x) = (for l in c.layers; x = l(x); end; x)
-(c::Chain2)(x, y) = nll(c(x), y)
+(l::Layer)(x, y) = sumabs2(y - Array(l(x))) / size(y,2)
 
 
 struct Chain
@@ -37,7 +22,16 @@ struct Chain
 end
 
 (c::Chain)(x) = (for l in c.layers; x = l(x); end; x)
-(c::Chain)(x, y) = sumabs2(y - c(x)) / size(y,2)
+(c::Chain)(x, y) = sumabs2(y - Array(c(x))) / size(y,2)
+
+
+struct Chain2
+    layers
+    Chain2(layers...) = new(layers)
+end
+
+(c::Chain2)(x) = (for l in c.layers; x = l(x); end; x)
+(c::Chain2)(x, y) = nll(Array(c(x)), y)
 
 
 struct Conv; w; b; f; pdrop; end
@@ -71,7 +65,7 @@ function (c::OneLayerBiRNN)(input)
     return c.output * hiddenoutput[:,:,end] .+ c.b
 end
 
-(c::OneLayerBiRNN)(input,output) = nll(c(input), output)
+(c::OneLayerBiRNN)(input,output) = nll(Array(c(input)), output)
 
 
 struct TwoTextsClassifier; input; rnn; output; b; pdrop; end
@@ -109,7 +103,7 @@ function (c::TwoTextsClassifier)(input)
     return c.output * hiddenoutput[:,:,end] .+ c.b
 end
 
-(c::TwoTextsClassifier)(input,output) = nll(c(input), output)
+(c::TwoTextsClassifier)(input,output) = nll(Array(c(input)), output)
 
 
 struct TwoLayerBiRNN; input; rnn; rnn2; output; b; pdrop; end
@@ -137,7 +131,7 @@ function (c::TwoLayerBiRNN)(input)
     return c.output * hiddenoutput2[:,:,end] .+ c.b
 end
 
-(c::TwoLayerBiRNN)(input,output) = nll(c(input), output)
+(c::TwoLayerBiRNN)(input,output) = nll(Array(c(input)), output)
 
 
 predict(model, x) = map(i->i[1], findmax(Array(model(x)),dims=1)[2])
