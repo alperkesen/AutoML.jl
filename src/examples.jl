@@ -34,24 +34,18 @@ end
 
 function train_gene_sequences(; epochs=1)
     gene_sequences = AutoML.splice_junction()
-    trn, tst = splitdata(gene_sequences; trainprop=0.8)
-
-    gen_trn = AutoML.csv2data(trn)
-    gen_tst = AutoML.csv2data(tst)
+    gen_trn = AutoML.csv2data(gene_sequences)
 
     gene_sequences_inputs = [("attribute_$i", "Category") for i in 1:60]
     gene_sequences_outputs = [("Class", "Category")]
 
     model = AutoML.Model(gene_sequences_inputs, gene_sequences_outputs)
-    result = AutoML.train(model, gen_trn; epochs=epochs)
+    result = AutoML.train(model, gen_trn; epochs=epochs, cv=true)
 
     xtrn, ytrn = preparedata(model, gen_trn)
     dtrn = minibatch(xtrn, ytrn, 32; shuffle=true)
 
-    xtst, ytst = preparedata(model, gen_tst)
-    dtst = minibatch(xtst, ytst, 32; shuffle=true)
-
-    model, dtrn, dtst
+    return model, xtrn, ytrn, dtrn
 end
 
 function train_cifar_100(; smallset=true, epochs=1)
