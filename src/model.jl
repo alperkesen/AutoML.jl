@@ -1,4 +1,4 @@
-using Knet: KnetArray, adam, progress!, minibatch, save, relu, gpu
+using Knet: adam, progress!, minibatch, save, relu
 
 mutable struct Model
     config::Config;
@@ -70,25 +70,24 @@ end
 
 
 function preparedata(m::Model, traindata; output=true)
-    atype=gpu()>=0 ? KnetArray : Array
     trn = preprocess(m, traindata)
 
     xtrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="input"))
 
     if isimagemodel(m)
         catdim = length(size(first(values(xtrn))[1])) + 1
-        xtrn = atype(cat(collect(values(xtrn))[1]..., dims=catdim))
+        xtrn = Array(cat(collect(values(xtrn))[1]..., dims=catdim))
     elseif istextmodel(m)
         xtrn = AutoML.slicematrix(collect(hcat(values(xtrn)...)))
     else
         catdim = length(size(first(values(xtrn)))) + 1
-        xtrn = atype(cat(values(xtrn)..., dims=catdim)')
+        xtrn = Array(cat(values(xtrn)..., dims=catdim)')
     end
 
     if output
         ytrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="output"))
         ytrn = slicematrix(hcat(values(ytrn)...))
-        ytrn = atype(ytrn)
+
         return xtrn, ytrn
     end
 
@@ -105,7 +104,7 @@ function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true,
     if !iscategorical(m)
         m.model = buildlinearestimator(inputsize, outputsize)
     else
-        outputsize = length(unique(Array(ytrn)))
+        outputsize = length(unique(ytrn))
 
         if isimagemodel(m)
             m.model = buildimageclassification(inputsize, outputsize)
