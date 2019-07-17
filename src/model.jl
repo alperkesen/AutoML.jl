@@ -70,18 +70,19 @@ end
 
 
 function preparedata(m::Model, traindata; output=true)
+    atype=gpu()>=0 ? KnetArray : Array
     trn = preprocess(m, traindata)
 
     xtrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="input"))
 
     if isimagemodel(m)
         catdim = length(size(first(values(xtrn))[1])) + 1
-        xtrn = Array(cat(collect(values(xtrn))[1]..., dims=catdim))
+        xtrn = atype(cat(collect(values(xtrn))[1]..., dims=catdim))
     elseif istextmodel(m)
         xtrn = AutoML.slicematrix(collect(hcat(values(xtrn)...)))
     else
         catdim = length(size(first(values(xtrn)))) + 1
-        xtrn = Array(cat(values(xtrn)..., dims=catdim)')
+        xtrn = atype(cat(values(xtrn)..., dims=catdim)')
     end
 
     if output
@@ -95,14 +96,12 @@ end
 
 function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true,
                cv=false)
-    atype=gpu()>=0 ? KnetArray : Array
     xtrn, ytrn = preparedata(m, traindata)
 
     inputsize = size(xtrn, 1)
     outputsize = size(ytrn, 1)
 
     if !iscategorical(m)
-        xtrn, ytrn = atype(xtrn), atype(ytrn)
         m.model = buildlinearestimator(inputsize, outputsize)
     else
         outputsize = length(unique(ytrn))
@@ -119,7 +118,6 @@ function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true,
                 m.model = buildquestionmatching(outputsize; pdrop=0.5)
             end
         else
-            xtrn, ytrn = atype(xtrn), atype(ytrn)
             m.model = buildclassificationmodel(inputsize, outputsize; pdrop=0)
         end
     end
