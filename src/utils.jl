@@ -203,7 +203,7 @@ function splitdata(df::DataFrames.DataFrame; trainprop=0.8)
     trn, tst = df[indices[1:trainsize], :], df[indices[trainsize+1:end], :]
 end
 
-function kfolds(x::AbstractArray, k::Int)
+function kfolds(x, k::Int)
     n = size(x, 2)
     s = n / k
     folds = [x[:, round(Int64, (i-1)*s)+1:min(n,round(Int64, i*s))] for i=1:k]
