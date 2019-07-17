@@ -105,7 +105,7 @@ function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true,
     if !iscategorical(m)
         m.model = buildlinearestimator(inputsize, outputsize)
     else
-        outputsize = length(unique(ytrn))
+        outputsize = length(unique(Array(ytrn)))
 
         if isimagemodel(m)
             m.model = buildimageclassification(inputsize, outputsize)
