@@ -88,6 +88,7 @@ function preparedata(m::Model, traindata; output=true)
     if output
         ytrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="output"))
         ytrn = slicematrix(hcat(values(ytrn)...))
+        ytrn = atype(ytrn)
         return xtrn, ytrn
     end
 
