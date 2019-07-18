@@ -27,7 +27,7 @@ isimagemodel(m::Model) = in("Image", getftypes(m; ftype="input"))
 istextmodel(m::Model) = in("Text", getftypes(m; ftype="input"))
 
 
-function preprocess(m::Model, data)
+function preprocess(m::Model, data;)
     preprocessed = Dict()
     featurelist = getfeatures(m; ftype="all")
     commonfeatures = [(fname, ftype) for (fname, ftype) in featurelist
@@ -102,6 +102,7 @@ function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true,
     outputsize = size(ytrn, 1)
 
     if !iscategorical(m)
+        xtrn, ytrn = atype(xtrn), atype(ytrn)
         m.model = buildlinearestimator(inputsize, outputsize)
     else
         outputsize = length(unique(ytrn))
@@ -118,6 +119,7 @@ function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true,
                 m.model = buildquestionmatching(outputsize; pdrop=0.5)
             end
         else
+            xtrn, ytrn = atype(xtrn), atype(ytrn)
             m.model = buildclassificationmodel(inputsize, outputsize; pdrop=0)
         end
     end
