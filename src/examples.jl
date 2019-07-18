@@ -51,7 +51,7 @@ function train_gene_sequences(; epochs=1)
     result = AutoML.train(model, gen_trn; epochs=epochs, cv=true)
 
     xtrn, ytrn = preparedata(model, gen_trn)
-    xtrn, ytrn = atype(xtrn), atype(ytrn)
+    xtrn = atype(xtrn)
 
     dtrn = minibatch(xtrn, ytrn, 32; shuffle=true)
 
