@@ -27,7 +27,7 @@ isimagemodel(m::Model) = in("Image", getftypes(m; ftype="input"))
 istextmodel(m::Model) = in("Text", getftypes(m; ftype="input"))
 
 
-function preprocess(m::Model, data;)
+function preprocess(m::Model, data; changevoc=false)
     preprocessed = Dict()
     featurelist = getfeatures(m; ftype="all")
     commonfeatures = [(fname, ftype) for (fname, ftype) in featurelist
@@ -58,7 +58,8 @@ function preprocess(m::Model, data;)
             preprocessed[fname] = [Float64.(readimage(imagepath; dirpath="cifar_100"))
                                    for imagepath in data[fname]]
         elseif ftype == "Text"
-            ids, voc = preprocesstext(data[fname]; voc=m.vocabulary)
+            ids, voc = preprocesstext(data[fname]; voc=m.vocabulary,
+                                      changevoc=changevoc)
             preprocessed[fname] = ids
             m.vocabulary = voc
         else
@@ -69,8 +70,8 @@ function preprocess(m::Model, data;)
 end
 
 
-function preparedata(m::Model, traindata; output=true)
-    trn = preprocess(m, traindata)
+function preparedata(m::Model, traindata; output=true, changevoc=false)
+    trn = preprocess(m, traindata; changevoc=changevoc)
 
     xtrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="input"))
 
@@ -96,9 +97,9 @@ function preparedata(m::Model, traindata; output=true)
 end
 
 function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true,
-               cv=false)
+               cv=false, changevoc=true)
     atype = gpu() >= 0 ? KnetArray : Array
-    xtrn, ytrn = preparedata(m, traindata)
+    xtrn, ytrn = preparedata(m, traindata; changevoc=changevoc)
 
     inputsize = size(xtrn, 1)
     outputsize = size(ytrn, 1)
@@ -165,8 +166,6 @@ function crossvalidate(m::Model, x, y; k=5, batchsize=32, shuffle=true, epochs=1
         foldxtst = xfolds[i]
         foldytst = yfolds[i]
 
-        #foldxtrn, foldytrn = atype(foldxtrn), atype(foldytrn)
-        #foldxtst, foldytst = atype(foldxtst), atype(foldytst)
         foldxtrn = atype(foldxtrn)
         foldxtst = atype(foldxtst)
  
