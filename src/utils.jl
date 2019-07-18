@@ -171,15 +171,19 @@ function doc2ids(x, voc)
 end
 
 function preprocesstext(xtrn; padding="pre", freqthreshold=10, sentencelen=50,
-                        voc=nothing)
-    xtrn = tokenize.(xtrn)
-    freqs = frequencies(
-        skipwords(map(doc->map(lowercase, doc), xtrn)))
-    voc = vocabulary(freqs; threshold=freqthreshold, voc=voc)
+                        voc=nothing, changevoc=false)
+    xtrn = map(doc->map(lowercase, doc), tokenize.(xtrn))
 
-    xtrn_ids = addpadding!(doc2ids(xtrn, voc), pos=padding; paddinglen=sentencelen)
-    xtrn_ids = truncate!(xtrn_ids, sentencelen, pos=padding)
-    xtrn_ids, voc
+    if voc == nothing || changevoc
+        freqs = frequencies(
+            skipwords(xtrn))
+        voc = vocabulary(freqs; threshold=freqthreshold, voc=voc)
+    end
+
+    xtrnids = addpadding!(doc2ids(xtrn, voc), pos=padding;
+                           paddinglen=sentencelen)
+    xtrnids = truncate!(xtrnids, sentencelen, pos=padding)
+    xtrnids, voc
 end
 
 function csv2data(csvpath::String)
@@ -194,7 +198,6 @@ function csv2data(df::DataFrames.DataFrame)
     data = Dict(String(fname) => Array(df[fname])
                 for fname in fnames)
 end
-
 
 function splitdata(df::DataFrames.DataFrame; trainprop=0.8)
     examplesize = size(df, 1)
