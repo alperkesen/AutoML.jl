@@ -1,7 +1,10 @@
 import AutoML
 import Random
+using Knet: gpu, KnetArray
 
 function train_house_rentals(; epochs=1)
+    atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}
+
     house_rentals = AutoML.house_rentals()
     trn, tst = splitdata(house_rentals; trainprop=0.8)
 
@@ -23,6 +26,9 @@ function train_house_rentals(; epochs=1)
     xtrn, ytrn = preparedata(model, house_rentals_trn)
     xtst, ytst = preparedata(model, house_rentals_tst)
 
+    xtrn, ytrn = atype(xtrn), atype(ytrn)
+    xtst, ytst = atype(xtst), atype(ytst)
+
     println("Train error:")
     println(model.model(xtrn, ytrn))
 
@@ -33,6 +39,8 @@ function train_house_rentals(; epochs=1)
 end
 
 function train_gene_sequences(; epochs=1)
+    atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}
+
     gene_sequences = AutoML.splice_junction()
     gen_trn = AutoML.csv2data(gene_sequences)
 
@@ -43,6 +51,8 @@ function train_gene_sequences(; epochs=1)
     result = AutoML.train(model, gen_trn; epochs=epochs, cv=true)
 
     xtrn, ytrn = preparedata(model, gen_trn)
+    xtrn, ytrn = atype(xtrn), atype(ytrn)
+
     dtrn = minibatch(xtrn, ytrn, 32; shuffle=true)
 
     return model, xtrn, ytrn, dtrn
