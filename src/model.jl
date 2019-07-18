@@ -1,4 +1,4 @@
-using Knet: adam, progress!, minibatch, save, relu
+using Knet: adam, progress!, minibatch, save, relu, gpu, KnetArray
 
 mutable struct Model
     config::Config;
@@ -82,6 +82,7 @@ function preparedata(m::Model, traindata; output=true)
     else
         catdim = length(size(first(values(xtrn)))) + 1
         xtrn = Array(cat(values(xtrn)..., dims=catdim)')
+        xtrn = float(xtrn)
     end
 
     if output
@@ -96,6 +97,7 @@ end
 
 function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true,
                cv=false)
+    atype = gpu() >= 0 ? KnetArray : Array
     xtrn, ytrn = preparedata(m, traindata)
 
     inputsize = size(xtrn, 1)
@@ -119,7 +121,6 @@ function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true,
                 m.model = buildquestionmatching(outputsize; pdrop=0.5)
             end
         else
-            xtrn, ytrn = atype(xtrn), atype(ytrn)
             m.model = buildclassificationmodel(inputsize, outputsize; pdrop=0)
         end
     end
@@ -128,6 +129,7 @@ function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true,
         println("Cross validation")
         m = crossvalidate(m, xtrn, ytrn; k=10, batchsize=batchsize,
                           epochs=epochs, shuffle=shuffle)
+        xtrn, ytrn = atype(xtrn), atype(ytrn)
         dtrn = minibatch(xtrn, ytrn, batchsize; shuffle=shuffle)
 
         return m, dtrn
@@ -151,6 +153,7 @@ function predictdata(m::Model, example)
 end
 
 function crossvalidate(m::Model, x, y; k=5, batchsize=32, shuffle=true, epochs=1)
+    atype = gpu() >= 0 ? KnetArray{Float64} : Array{Float64}
     xfolds, yfolds = kfolds(x, k), kfolds(y, k)
     trainacc = 0
     testacc = 0
@@ -162,6 +165,11 @@ function crossvalidate(m::Model, x, y; k=5, batchsize=32, shuffle=true, epochs=1
         foldxtst = xfolds[i]
         foldytst = yfolds[i]
 
+        #foldxtrn, foldytrn = atype(foldxtrn), atype(foldytrn)
+        #foldxtst, foldytst = atype(foldxtst), atype(foldytst)
+        foldxtrn = atype(foldxtrn)
+        foldxtst = atype(foldxtst)
+ 
         dtrn = minibatch(foldxtrn, foldytrn, batchsize; shuffle=shuffle)
         dtst = minibatch(foldxtst, foldytst, batchsize; shuffle=shuffle)
 
