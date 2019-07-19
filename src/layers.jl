@@ -1,4 +1,5 @@
-using Knet: KnetArray, RNN, Param, relu, sumabs2, mat, conv4, pool, dropout, nll, gpu
+using Knet: KnetArray, RNN, Param, relu, sumabs2, mat, conv4, pool, dropout,
+    nll, gpu
 using Statistics: mean
 
 
@@ -44,7 +45,9 @@ Conv(w1::Int, w2::Int, cx::Int, cy::Int, f=relu; pdrop=0, scale=0.01,
 
 struct OneLayerBiRNN; input; rnn; output; b; pdrop; end
 
-OneLayerBiRNN(input::Int, embed::Int, hidden::Int, output::Int; pdrop=0, scale=0.01, atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}, rnnType=:gru, bidirectional=false) =
+OneLayerBiRNN(input::Int, embed::Int, hidden::Int, output::Int; pdrop=0,
+              scale=0.01, atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64},
+              rnnType=:gru, bidirectional=false) =
     OneLayerBiRNN(Param(atype(randn(embed, input) * scale)),
                   RNN(embed, hidden, rnnType=rnnType, dataType=Float64,
                       bidirectional=bidirectional),
@@ -66,7 +69,9 @@ end
 
 struct TwoTextsClassifier; input; rnn; output; b; pdrop; end
 
-TwoTextsClassifier(input::Int, embed::Int, hidden::Int, output::Int; pdrop=0, scale=0.01, atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}, rnnType=:gru, bidirectional=true) =
+TwoTextsClassifier(input::Int, embed::Int, hidden::Int, output::Int; pdrop=0,
+                   scale=0.01, atype=gpu()>=0 ? KnetArray{Float64} :
+                   Array{Float64}, rnnType=:gru, bidirectional=true) =
     TwoTextsClassifier(Param(atype(randn(embed, input) * scale)),
                        RNN(embed, hidden, rnnType=rnnType, dataType=Float64,
                            bidirectional=bidirectional),
@@ -111,7 +116,8 @@ TwoLayerBiRNN(input::Int, embed::Int, hidden1::Int, hidden2::Int,
                   Param(atype(randn(embed, input) * scale)),
                   RNN(embed, hidden1, rnnType=rnnType, dataType=Float64,
                       bidirectional=bidirectional),
-                  RNN(2hidden1, hidden2, rnnType=rnnType, dataType=Float64,                       bidirectional=bidirectional),
+                  RNN(2hidden1, hidden2, rnnType=rnnType, dataType=Float64,
+                      bidirectional=bidirectional),
                   Param(atype(randn(output, 2hidden2) * scale)),
                   Param(atype(zeros(output))),
                   pdrop)
