@@ -1,4 +1,5 @@
 using Knet: adam, progress!, minibatch, save, relu, gpu, KnetArray
+using Statistics: mean
 
 mutable struct Model
     config::Config;
@@ -55,11 +56,14 @@ function preprocess(m::Model, data; changevoc=false)
         elseif ftype == "Category"
             preprocessed[fname] = doc2ids(data[fname])
         elseif ftype == "Image"
-            preprocessed[fname] = [Float64.(readimage(imagepath; dirpath="cifar_100"))
-                                   for imagepath in data[fname]]
+            preprocessed[fname] = [Float64.(readimage(
+                imagepath; dirpath="cifar_100")) for imagepath in data[fname]]
         elseif ftype == "Text"
+            sentencelen = Int(round(mean(length(split(doc))
+                                         for doc in data[fname]))) + 50
             ids, voc = preprocesstext(data[fname]; voc=m.vocabulary,
-                                      changevoc=changevoc)
+                                      changevoc=changevoc,
+                                      sentencelen=sentencelen)
             preprocessed[fname] = ids
             m.vocabulary = voc
         else
@@ -68,7 +72,6 @@ function preprocess(m::Model, data; changevoc=false)
     end
     preprocessed
 end
-
 
 function preparedata(m::Model, traindata; output=true, changevoc=false)
     trn = preprocess(m, traindata; changevoc=changevoc)
@@ -87,7 +90,8 @@ function preparedata(m::Model, traindata; output=true, changevoc=false)
     end
 
     if output
-        ytrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="output"))
+        ytrn = Dict(fname => trn[fname]
+                    for fname in getfnames(m; ftype="output"))
         ytrn = slicematrix(hcat(values(ytrn)...))
 
         return xtrn, ytrn
@@ -96,7 +100,8 @@ function preparedata(m::Model, traindata; output=true, changevoc=false)
     return xtrn
 end
 
-function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true,
+function train(m::Model, traindata::Dict{String, Array{T,1} where T};
+               epochs=1, batchsize=32, shuffle=true,
                cv=false, changevoc=true)
     atype = gpu() >= 0 ? KnetArray : Array
     xtrn, ytrn = preparedata(m, traindata; changevoc=changevoc)
@@ -130,7 +135,7 @@ function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true,
         println("Cross validation")
         m = crossvalidate(m, xtrn, ytrn; k=10, batchsize=batchsize,
                           epochs=epochs, shuffle=shuffle)
-        xtrn, ytrn = atype(xtrn), atype(ytrn)
+        xtrn, ytrn = atype(xtrn), ytrn
         dtrn = minibatch(xtrn, ytrn, batchsize; shuffle=shuffle)
 
         return m, dtrn
@@ -140,6 +145,11 @@ function train(m::Model, traindata; epochs=1, batchsize=32, shuffle=true,
         save(joinpath(SAVEDIR, "model.jld2"), "model", m.model)
     end
     m, dtrn
+end
+
+function train(m::Model, trainpath::String; args...)
+    traindata = csv2data(trainpath)
+    train(m, traindata; args...)
 end
 
 function predictdata(m::Model, example)
@@ -153,7 +163,8 @@ function predictdata(m::Model, example)
     end
 end
 
-function crossvalidate(m::Model, x, y; k=5, batchsize=32, shuffle=true, epochs=1)
+function crossvalidate(m::Model, x, y; k=5, batchsize=32, shuffle=true,
+                       epochs=1)
     atype = gpu() >= 0 ? KnetArray{Float64} : Array{Float64}
     xfolds, yfolds = kfolds(x, k), kfolds(y, k)
     trainacc = 0
