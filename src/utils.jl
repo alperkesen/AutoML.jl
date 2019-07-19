@@ -188,15 +188,20 @@ end
 
 function csv2data(csvpath::String)
     df = CSV.read(csvpath)
+    df = cleandata(df)
     fnames = names(df)
-    data = Dict(String(fname) => Array(df[fname])
+    data = Dict{String, Array{T,1} where T}(String(fname) => Array(df[fname])
                 for fname in fnames)
 end
 
 function csv2data(df::DataFrames.DataFrame)
     fnames = names(df)
-    data = Dict(String(fname) => Array(df[fname])
+    data = Dict{String, Array{T,1} where T}(String(fname) => Array(df[fname])
                 for fname in fnames)
+end
+
+function cleandata(df::DataFrames.DataFrame)
+    df = dropmissing(df)
 end
 
 function splitdata(df::DataFrames.DataFrame; trainprop=0.8)
