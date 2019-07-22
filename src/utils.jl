@@ -1,7 +1,7 @@
-import Random
 using CSV
 using DataFrames
 using Images: load
+using StatsBase: sample
 
 STOPWORDS = ["this", "is", "a", "an", "the",
              '.', '?', '!', ';']
@@ -207,8 +207,9 @@ end
 function splitdata(df::DataFrames.DataFrame; trainprop=0.8)
     examplesize = size(df, 1)
     trainsize = Int(round(examplesize * trainprop))
-    indices = Random.shuffle(Random.seed!(0), Vector(1:examplesize))
-    trn, tst = df[indices[1:trainsize], :], df[indices[trainsize+1:end], :]
+    trnindices = sample(1:examplesize, trainsize, replace=false)
+    tstindices = [i for i=1:examplesize if !in(i, trnindices)]
+    trn, tst = df[trnindices, :], df[tstindices, :]
 end
 
 function kfolds(x, k::Int)
