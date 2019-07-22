@@ -1,5 +1,6 @@
 using Knet: adam, progress!, minibatch, save, relu, gpu, KnetArray
 using Statistics: mean
+using Plots
 
 mutable struct Model
     config::Config;
@@ -127,7 +128,8 @@ function train(m::Model, traindata::Dict{String, Array{T,1} where T};
                 m.model = buildquestionmatching(outputsize; pdrop=0.5)
             end
         else
-            m.model = buildclassificationmodel(inputsize, outputsize; pdrop=0)
+            println("Building classification model...")
+            m.model = buildclassificationmodel(inputsize, outputsize; pdrop=0.5)
         end
     end
 
@@ -151,6 +153,16 @@ function train(m::Model, trainpath::String; args...)
     traindata = csv2data(trainpath)
     train(m, traindata; args...)
 end
+
+function partialtrain(m::Model, trainpath::String)
+    traindata = csv2data(trainpath)
+    train(m, traindata; epochs=1)
+end
+
+function partialtrain(m::Model, traindata::Dict{String, Array{T,1} where T})
+    train(m, traindata; epochs=1)
+end
+
 
 function predictdata(m::Model, example)
     data = Dict(fname => [value] for (fname, value) in example)
