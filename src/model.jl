@@ -114,7 +114,7 @@ function train(m::Model, traindata::Dict{String, Array{T,1} where T};
     outputsize = size(ytrn, 1)
 
     if !iscategorical(m)
-        xtrn, ytrn = atype(xtrn), atype(ytrn)
+        println("Building linear model...")
         m.model = buildlinearestimator(inputsize, outputsize)
     else
         outputsize = length(unique(ytrn))
@@ -122,6 +122,8 @@ function train(m::Model, traindata::Dict{String, Array{T,1} where T};
         if isimagemodel(m)
             m.model = buildimageclassification(inputsize, outputsize)
         elseif istextmodel(m)
+            println("Building sequential model...")
+ 
             fdict = getfdict(m.config, ftype="input")
             numtexts = fdict["Text"]
 
@@ -136,18 +138,17 @@ function train(m::Model, traindata::Dict{String, Array{T,1} where T};
         end
     end
 
-    if cv
-        println("Cross validation")
-        m = crossvalidate(m, xtrn, ytrn; k=10, epochs=epochs)
-        xtrn, ytrn = atype(xtrn), ytrn
-        dtrn = minibatch(xtrn, ytrn, m.params["batchsize"]; shuffle=true)
-
-        return m, dtrn
-    else
-        dtrn = minibatch(xtrn, ytrn, m.params["batchsize"]; shuffle=true)
-        progress!(adam(m.model, repeat(dtrn, epochs)))
-        save(joinpath(SAVEDIR, "model.jld2"), "model", m.model)
+    if in(typeof(m.model), [CategoricalChain, LinearChain])
+        xtrn = atype(xtrn)
     end
+
+    if typeof(m.model) == LinearChain
+        ytrn = atype(ytrn)
+    end
+
+    dtrn = minibatch(xtrn, ytrn, m.params["batchsize"]; shuffle=true)
+    progress!(adam(m.model, repeat(dtrn, epochs)))
+    save(joinpath(SAVEDIR, "model.jld2"), "model", m.model)
     m, dtrn
 end
 
