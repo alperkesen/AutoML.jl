@@ -99,7 +99,7 @@ function (c::TwoTextsClassifier)(input)
     hiddenoutput = sum(hiddenoutput, dims=3)[:, :, end]
     hiddenoutput = dropout(hiddenoutput, c.pdrop)
 
-    return c.output * hiddenoutput[:,:,end] .+ c.b
+    return c.output * hiddenoutput .+ c.b
 end
 
 (c::TwoTextsClassifier)(input,output) = nll(c(input), output)
