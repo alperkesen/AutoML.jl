@@ -12,24 +12,21 @@ Layer(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
 (l::Layer)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
 (l::Layer)(x, y) = sumabs2(y - l(x)) / size(y,2)
 
-
-struct Chain
+struct LinearChain
     layers
-    Chain(layers...) = new(layers)
+    LinearChain(layers...) = new(layers)
 end
 
-(c::Chain)(x) = (for l in c.layers; x = l(x); end; x)
-(c::Chain)(x, y) = sumabs2(y - c(x)) / size(y,2)
+(c::LinearChain)(x) = (for l in c.layers; x = l(x); end; x)
+(c::LinearChain)(x, y) = sumabs2(y - c(x)) / size(y,2)
 
-
-struct Chain2
+struct CategoricalChain
     layers
-    Chain2(layers...) = new(layers)
+    CategoricalChain(layers...) = new(layers)
 end
 
-(c::Chain2)(x) = (for l in c.layers; x = l(x); end; x)
-(c::Chain2)(x, y) = nll(c(x), y)
-
+(c::CategoricalChain)(x) = (for l in c.layers; x = l(x); end; x)
+(c::CategoricalChain)(x, y) = nll(c(x), y)
 
 struct Conv; w; b; f; pdrop; end
 

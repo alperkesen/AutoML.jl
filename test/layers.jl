@@ -28,7 +28,7 @@ end
 
     layer = AutoML.Layer(input, hidden)
     layer2 = AutoML.Layer(hidden, output)
-    chain = AutoML.Chain(layer, layer2)
+    chain = AutoML.LinearChain(layer, layer2)
 
     batchsize = map(x->2^x, rand(3:10))
     x = atype(randn(input, batchsize))
@@ -50,7 +50,7 @@ end
 
     layer = AutoML.Layer(input, hidden)
     layer2 = AutoML.Layer(hidden, output)
-    chain = AutoML.Chain2(layer, layer2)
+    chain = AutoML.CategoricalChain(layer, layer2)
 
     batchsize = map(x->2^x, rand(3:10))
     numclass = rand(2:10)
