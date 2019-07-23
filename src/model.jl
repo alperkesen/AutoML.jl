@@ -69,7 +69,7 @@ function preprocess(m::Model, data; changevoc=false)
         elseif ftype == "Text"
             ids, voc = preprocesstext(data[fname]; voc=m.vocabulary,
                                       changevoc=changevoc,
-                                      sentencelen=m.params["lensentence"])
+                                      lensentence=m.params["lensentence"])
             preprocessed[fname] = ids
             m.vocabulary = voc
             m.params["vocsize"] = length(voc)

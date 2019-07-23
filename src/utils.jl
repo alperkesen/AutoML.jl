@@ -61,7 +61,8 @@ end
 
 function image3d(image)
     imagergb = [float([pixel.r, pixel.g, pixel.b]) for pixel in image]
-    image3d = reshape(hcat(imagergb...)', (size(image, 1), size(image, 2), length(image[1])))
+    image3d = reshape(hcat(imagergb...)', (size(image, 1), size(image, 2),
+                                           length(image[1])))
 end
 
 function tokenize(text)
@@ -105,15 +106,10 @@ function frequencies(x)
 end
 
 function vocabulary(freqs; voc=nothing, threshold=1)
-    if voc == nothing
-        vocabulary = Dict{String, Integer}()
-        vocabulary["<pad>"] = 1
-        vocabulary["<unk>"] = 2
-        pid = 3
-    else
-        vocabulary = voc
-        pid = length(voc) + 1
-    end
+    vocabulary = voc == nothing ? Dict{String, Integer}() : voc
+    vocabulary["<pad>"] = 1
+    vocabulary["<unk>"] = 2
+    pid = length(voc) + 1
 
     frequency_order = sort([(freqs[word], word)
                             for word in keys(freqs)], rev=true)
@@ -128,24 +124,14 @@ function vocabulary(freqs; voc=nothing, threshold=1)
     vocabulary
 end
 
-function maxsentence(x)
-    maximum(length(doc) for doc in x)
-end
+maxsentence(x) = maximum(length(doc) for doc in x)
 
-function addpadding!(x; pos="post", paddinglen=nothing)
-    max_length = maxsentence(x)
-
-    if paddinglen != nothing
-        max_length = paddinglen
-    end
+function addpadding!(x; pos="post", lenpadding=nothing)
+    max_length = lenpadding != nothing ? lenpadding : maxsentence(x)
 
     for doc in x
         while length(doc) < max_length
-            if pos == "post"
-                push!(doc, 1)
-            else
-                pushfirst!(doc, 1)
-            end
+            pos == "post" ? push!(doc, 1) : pushfirst!(doc, 1)
         end
     end
     x
@@ -154,11 +140,7 @@ end
 function truncate!(x, th=300; pos="post")
     for doc in x
         while length(doc) > th
-            if pos == "post"
-                pop!(doc)
-            else
-                popfirst!(doc)
-            end
+            pos == "post" ? pop!(doc) : popfirst!(doc)
         end
     end
     x
@@ -170,7 +152,7 @@ function doc2ids(x, voc)
            for doc in x]
 end
 
-function preprocesstext(x; padding="pre", freqthreshold=10, sentencelen=50,
+function preprocesstext(x; padding="pre", freqthreshold=10, lensentence=50,
                         voc=nothing, changevoc=false)
     x = map(doc->map(lowercase, doc), tokenize.(x))
 
@@ -181,8 +163,8 @@ function preprocesstext(x; padding="pre", freqthreshold=10, sentencelen=50,
     end
 
     ids = addpadding!(doc2ids(x, voc), pos=padding;
-                      paddinglen=sentencelen)
-    ids = truncate!(ids, sentencelen, pos=padding)
+                      lenpadding=lensentence)
+    ids = truncate!(ids, lensentence, pos=padding)
     ids, voc
 end
 
