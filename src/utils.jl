@@ -109,7 +109,7 @@ function vocabulary(freqs; voc=nothing, threshold=1)
     vocabulary = voc == nothing ? Dict{String, Integer}() : voc
     vocabulary["<pad>"] = 1
     vocabulary["<unk>"] = 2
-    pid = length(voc) + 1
+    pid = length(vocabulary) + 1
 
     frequency_order = sort([(freqs[word], word)
                             for word in keys(freqs)], rev=true)
@@ -157,8 +157,7 @@ function preprocesstext(x; padding="pre", freqthreshold=10, lensentence=50,
     x = map(doc->map(lowercase, doc), tokenize.(x))
 
     if voc == nothing || changevoc
-        freqs = frequencies(
-            skipwords(x))
+        freqs = frequencies(skipwords(x))
         voc = vocabulary(freqs; threshold=freqthreshold, voc=voc)
     end
 
