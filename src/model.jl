@@ -2,19 +2,24 @@ using Knet: adam, progress!, minibatch, save, relu, gpu, KnetArray
 using Statistics: mean
 using Plots
 
+PARAMS = Dict("batchsize" => 32)
+
+
 mutable struct Model
     config::Config;
     model
     savepath::String
     vocabulary
+    params
 end
 
-Model(config::Config; savedir=SAVEDIR, voc=nothing) = Model(config, Chain(),
-                                                        savedir, voc)
+Model(config::Config; savedir=SAVEDIR, voc=nothing, params=PARAMS) = Model(
+    config, nothing, savedir, voc, params)
 Model(inputs::Array{Tuple{String, String},1},
       outputs::Array{Tuple{String, String},1};
-      savedir=SAVEDIR, voc=nothing) = Model(Config(inputs, outputs),
-                                            savedir=SAVEDIR, voc=voc)
+      savedir=SAVEDIR, voc=nothing, params=PARAMS) = Model(
+          Config(inputs, outputs),
+          savedir=SAVEDIR, voc=voc, params=params)
 
 getfeatures(m::Model; ftype="all") = getfeatures(m.config; ftype=ftype)
 getfnames(m::Model; ftype="all") = getfnames(m.config; ftype=ftype)
@@ -102,10 +107,9 @@ function preparedata(m::Model, traindata; output=true, changevoc=false)
 end
 
 function train(m::Model, traindata::Dict{String, Array{T,1} where T};
-               epochs=1, batchsize=32, shuffle=true,
-               cv=false, changevoc=true)
+               epochs=1, cv=false)
     atype = gpu() >= 0 ? KnetArray : Array
-    xtrn, ytrn = preparedata(m, traindata; changevoc=changevoc)
+    xtrn, ytrn = preparedata(m, traindata; changevoc=true)
 
     inputsize = size(xtrn, 1)
     outputsize = size(ytrn, 1)
@@ -129,20 +133,19 @@ function train(m::Model, traindata::Dict{String, Array{T,1} where T};
             end
         else
             println("Building classification model...")
-            m.model = buildclassificationmodel(inputsize, outputsize; pdrop=0.5)
+            m.model = buildclassificationmodel(inputsize, outputsize; pdrop=0)
         end
     end
 
     if cv
         println("Cross validation")
-        m = crossvalidate(m, xtrn, ytrn; k=10, batchsize=batchsize,
-                          epochs=epochs, shuffle=shuffle)
+        m = crossvalidate(m, xtrn, ytrn; k=10, epochs=epochs)
         xtrn, ytrn = atype(xtrn), ytrn
-        dtrn = minibatch(xtrn, ytrn, batchsize; shuffle=shuffle)
+        dtrn = minibatch(xtrn, ytrn, m.params["batchsize"]; shuffle=true)
 
         return m, dtrn
     else
-        dtrn = minibatch(xtrn, ytrn, batchsize; shuffle=shuffle)
+        dtrn = minibatch(xtrn, ytrn, m.params["batchsize"]; shuffle=true)
         progress!(adam(m.model, repeat(dtrn, epochs)))
         save(joinpath(SAVEDIR, "model.jld2"), "model", m.model)
     end
@@ -163,24 +166,17 @@ function partialtrain(m::Model, traindata::Dict{String, Array{T,1} where T})
     train(m, traindata; epochs=1)
 end
 
-
 function predictdata(m::Model, example)
     data = Dict(fname => [value] for (fname, value) in example)
     x = preparedata(m, data; output=false)
 
-    if iscategorical(m)
-        return predict(m.model, x)
-    else
-        return m.model(x)
-    end
+    iscategorical(m) ? predict(m.model, x) : m.model(x)
 end
 
-function crossvalidate(m::Model, x, y; k=5, batchsize=32, shuffle=true,
-                       epochs=1)
+function crossvalidate(m::Model, x, y; k=5, epochs=1)
     atype = gpu() >= 0 ? KnetArray{Float64} : Array{Float64}
     xfolds, yfolds = kfolds(x, k), kfolds(y, k)
-    trainacc = 0
-    testacc = 0
+    trainacc, testacc = zeros(2)
 
     for i=1:k
         foldxtrn = hcat([xfolds[j] for j=1:k if j != i]...)
@@ -192,8 +188,10 @@ function crossvalidate(m::Model, x, y; k=5, batchsize=32, shuffle=true,
         foldxtrn = atype(foldxtrn)
         foldxtst = atype(foldxtst)
  
-        dtrn = minibatch(foldxtrn, foldytrn, batchsize; shuffle=shuffle)
-        dtst = minibatch(foldxtst, foldytst, batchsize; shuffle=shuffle)
+        dtrn = minibatch(foldxtrn, foldytrn, m.params["batchsize"];
+                         shuffle=true)
+        dtst = minibatch(foldxtst, foldytst, m.params["batchsize"];
+                         shuffle=true)
 
         progress!(adam(m.model, repeat(dtrn, epochs)))
 
