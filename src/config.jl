@@ -1,15 +1,16 @@
-DATATYPES = ["String",
-             "Int",
-             "Float",
-             "Binary",
-             "Date",
-             "Timestamp",
-             "Binary category",
-             "Category",
-             "Image",
-             "Text",
-             "Array"
-             ]
+const STRING = "String"
+const INT = "Int"
+const FLOAT = "Float"
+const BINARY = "Binary"
+const DATE = "Date"
+const TIMESTAMP = "Timestamp"
+const BINARYCATEGORY = "Binary Category"
+const CATEGORY = "Category"
+const IMAGE = "Image"
+const TEXT = "Text"
+const ARRAY = "Array"
+const DATATYPES = [STRING, INT, FLOAT, BINARY, DATE, TIMESTAMP,
+                   BINARYCATEGORY, CATEGORY, IMAGE, TEXT, ARRAY]
 
 struct Config;
     inputs::Array{Tuple{String, String}, 1};

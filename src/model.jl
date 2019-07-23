@@ -28,12 +28,12 @@ getfnames(m::Model; ftype="all") = getfnames(m.config; ftype=ftype)
 getftypes(m::Model; ftype="all") = getftypes(m.config; ftype=ftype)
 
 function iscategorical(m::Model)
-    in("Category", getftypes(m; ftype="output")) ||
-        in("Binary Category", getftypes(m; ftype="output"))
+    in(CATEGORY, getftypes(m; ftype="output")) ||
+        in(BINARYCATEGORY, getftypes(m; ftype="output"))
 end
 
-isimagemodel(m::Model) = in("Image", getftypes(m; ftype="input"))
-istextmodel(m::Model) = in("Text", getftypes(m; ftype="input"))
+isimagemodel(m::Model) = in(IMAGE, getftypes(m; ftype="input"))
+istextmodel(m::Model) = in(TEXT, getftypes(m; ftype="input"))
 
 
 function preprocess(m::Model, data; changevoc=false)
@@ -43,11 +43,11 @@ function preprocess(m::Model, data; changevoc=false)
                       if in(fname, keys(data))]
 
     for (fname, ftype) in commonfeatures
-        if ftype == "String"
+        if ftype == STRING
             preprocessed[fname] = doc2ids(data[fname])
-        elseif ftype == "Int"
+        elseif ftype == INT
             preprocessed[fname] = Int.(data[fname])
-        elseif ftype == "Float"
+        elseif ftype == FLOAT
             if eltype(data[fname]) == String
                 preprocessed[fname] = map(x->parse(Float64, x), data[fname])
             elseif eltype(data[fname]) == Int
@@ -55,18 +55,18 @@ function preprocess(m::Model, data; changevoc=false)
             else
                 preprocessed[fname] = data[fname]
             end
-        elseif ftype == "Binary Category"
+        elseif ftype == BINARYCATEGORY
             if eltype(data[fname]) != Int
                 preprocessed[fname] = map(x->parse(Int64, x), data[fname]) .+ 1
             else
                 preprocessed[fname] = data[fname] .+ 1
             end
-        elseif ftype == "Category"
+        elseif ftype == CATEGORY
             preprocessed[fname] = doc2ids(data[fname])
-        elseif ftype == "Image"
+        elseif ftype == IMAGE
             preprocessed[fname] = [Float64.(readimage(
                 imagepath; dirpath="cifar_100")) for imagepath in data[fname]]
-        elseif ftype == "Text"
+        elseif ftype == TEXT
             ids, voc = preprocesstext(data[fname]; voc=m.vocabulary,
                                       changevoc=changevoc,
                                       lensentence=m.params["lensentence"])
@@ -127,7 +127,7 @@ function train(m::Model, traindata::Dict{String, Array{T,1} where T};
             println("Building sequential model...")
  
             fdict = getfdict(m.config, ftype="input")
-            numtexts = fdict["Text"]
+            numtexts = fdict[TEXT]
 
             if numtexts == 1
                 m.model = buildsentimentanalysis(outputsize; pdrop=0.5)
