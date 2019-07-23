@@ -2,7 +2,8 @@ using Knet: adam, progress!, minibatch, save, relu, gpu, KnetArray
 using Statistics: mean
 using Plots
 
-PARAMS = Dict("batchsize" => 32)
+PARAMS = Dict("batchsize" => 32,
+              "lensentence" => 20)
 
 
 mutable struct Model
@@ -65,11 +66,9 @@ function preprocess(m::Model, data; changevoc=false)
             preprocessed[fname] = [Float64.(readimage(
                 imagepath; dirpath="cifar_100")) for imagepath in data[fname]]
         elseif ftype == "Text"
-            sentencelen = Int(round(mean(length(split(doc))
-                                         for doc in data[fname]))) + 50
             ids, voc = preprocesstext(data[fname]; voc=m.vocabulary,
                                       changevoc=changevoc,
-                                      sentencelen=sentencelen)
+                                      sentencelen=m.params["lensentence"])
             preprocessed[fname] = ids
             m.vocabulary = voc
         else
