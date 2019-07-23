@@ -170,20 +170,20 @@ function doc2ids(x, voc)
            for doc in x]
 end
 
-function preprocesstext(xtrn; padding="pre", freqthreshold=10, sentencelen=50,
+function preprocesstext(x; padding="pre", freqthreshold=10, sentencelen=50,
                         voc=nothing, changevoc=false)
-    xtrn = map(doc->map(lowercase, doc), tokenize.(xtrn))
+    x = map(doc->map(lowercase, doc), tokenize.(x))
 
     if voc == nothing || changevoc
         freqs = frequencies(
-            skipwords(xtrn))
+            skipwords(x))
         voc = vocabulary(freqs; threshold=freqthreshold, voc=voc)
     end
 
-    xtrnids = addpadding!(doc2ids(xtrn, voc), pos=padding;
-                           paddinglen=sentencelen)
-    xtrnids = truncate!(xtrnids, sentencelen, pos=padding)
-    xtrnids, voc
+    ids = addpadding!(doc2ids(x, voc), pos=padding;
+                      paddinglen=sentencelen)
+    ids = truncate!(ids, sentencelen, pos=padding)
+    ids, voc
 end
 
 function csv2data(csvpath::String)
