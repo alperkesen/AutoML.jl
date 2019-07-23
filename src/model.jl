@@ -3,7 +3,8 @@ using Statistics: mean
 using Plots
 
 PARAMS = Dict("batchsize" => 32,
-              "lensentence" => 20)
+              "lensentence" => 20,
+              "vocsize" => 30000)
 
 
 mutable struct Model
@@ -71,6 +72,7 @@ function preprocess(m::Model, data; changevoc=false)
                                       sentencelen=m.params["lensentence"])
             preprocessed[fname] = ids
             m.vocabulary = voc
+            m.params["vocsize"] = length(voc)
         else
             preprocessed[fname] = data[fname]
         end
@@ -130,7 +132,8 @@ function train(m::Model, traindata::Dict{String, Array{T,1} where T};
             if numtexts == 1
                 m.model = buildsentimentanalysis(outputsize; pdrop=0.5)
             else
-                m.model = buildquestionmatching(outputsize; pdrop=0.5)
+                m.model = buildquestionmatching(outputsize; vocsize=m.params["vocsize"],
+                                                pdrop=0.5)
             end
         else
             println("Building classification model...")

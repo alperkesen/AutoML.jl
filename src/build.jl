@@ -28,9 +28,9 @@ function buildsentimentanalysis(outputsize; voclen=30000, embedsize=100,
                   pdrop=pdrop, scale=scale)
 end
 
-function buildquestionmatching(outputsize; voclen=30000, embedsize=100,
+function buildquestionmatching(outputsize; vocsize=30000, embedsize=100,
                                hiddensize=20, pdrop=0, scale=0.01)
-    TwoTextsClassifier(voclen, embedsize, hiddensize, outputsize;
+    TwoTextsClassifier(vocsize, embedsize, hiddensize, outputsize;
                        pdrop=pdrop, scale=scale, rnnType=:lstm)
 end
 
