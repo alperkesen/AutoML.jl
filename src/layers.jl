@@ -96,6 +96,7 @@ function (c::TwoTextsClassifier)(input)
 
     hiddenoutput = vcat(hiddenoutput1, hiddenoutput2)
     hiddenoutput = reshape(hiddenoutput, 2H, B, W)
+    hiddenoutput = sum(hiddenoutput, dims=3)[:, :, end]
     hiddenoutput = dropout(hiddenoutput, c.pdrop)
 
     return c.output * hiddenoutput[:,:,end] .+ c.b
