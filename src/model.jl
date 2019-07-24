@@ -1,4 +1,4 @@
-using Knet: adam, progress!, minibatch, save, relu, gpu, KnetArray
+using Knet: Knet, AutoGrad, adam, progress!, minibatch, save, relu, gpu, KnetArray, load
 using Statistics: mean
 using Plots
 
@@ -36,6 +36,27 @@ end
 isimagemodel(m::Model) = in(IMAGE, getftypes(m; ftype="input"))
 istextmodel(m::Model) = in(TEXT, getftypes(m; ftype="input"))
 
+function savemodel(m::Model, savepath=nothing)
+    savepath = savepath == nothing ? joinpath(SAVEDIR, "$(m.name).jld2") : savepath
+    save(savepath,
+         "config", m.config,
+         "model", m.model,
+         "params", m.params,
+         "vocabulary", m.vocabulary)
+end
+
+function loadmodel(m::Model, loadpath::String)
+    m.config = load(loadpath, "config")
+    m.model = load(loadpath, "model")
+    m.params = load(loadpath, "params")
+    m.vocabulary = load(loadpath, "vocabulary")
+end
+
+function loadmodel(loadpath::String)
+    m = Model(Config())
+    loadmodel(m, loadpath)
+    m
+end
 
 function preprocess(m::Model, data; changevoc=false)
     preprocessed = Dict()
@@ -153,7 +174,7 @@ function train(m::Model, traindata::Dict{String, Array{T,1} where T};
 
     dtrn = minibatch(xtrn, ytrn, m.params["batchsize"]; shuffle=true)
     progress!(adam(m.model, repeat(dtrn, epochs)))
-    save(joinpath(SAVEDIR, "$(m.name).jld2"), "model", m.model)
+    savemodel(m)
     m, dtrn
 end
 
