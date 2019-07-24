@@ -14,8 +14,11 @@ const DATATYPES = [STRING, INT, FLOAT, BINARY, DATE, TIMESTAMP,
 
 struct Config;
     inputs::Array{Tuple{String, String}, 1};
-    outputs::Array{Tuple{String, String},1};
+    outputs::Array{Tuple{String, String}, 1};
 end
+
+Config() = Config(Array{Tuple{String, String}, 1}(),
+                  Array{Tuple{String, String}, 1}())
 
 function getfeatures(c::Config; ftype="all")
     if ftype == "all"
