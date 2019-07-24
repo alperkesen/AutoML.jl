@@ -9,19 +9,20 @@ PARAMS = Dict("batchsize" => 32,
 
 mutable struct Model
     config::Config;
+    name::String
     model
     savepath::String
     vocabulary
     params
 end
 
-Model(config::Config; savedir=SAVEDIR, voc=nothing, params=PARAMS) = Model(
-    config, nothing, savedir, voc, params)
+Model(config::Config; name="model", savedir=SAVEDIR, voc=nothing,
+      params=PARAMS) = Model(config, name, nothing, savedir, voc, params)
 Model(inputs::Array{Tuple{String, String},1},
       outputs::Array{Tuple{String, String},1};
-      savedir=SAVEDIR, voc=nothing, params=PARAMS) = Model(
-          Config(inputs, outputs),
-          savedir=SAVEDIR, voc=voc, params=params)
+      name="model", savedir=SAVEDIR, voc=nothing, params=PARAMS) = Model(
+          Config(inputs, outputs), name=name, savedir=SAVEDIR, voc=voc,
+          params=params)
 
 getfeatures(m::Model; ftype="all") = getfeatures(m.config; ftype=ftype)
 getfnames(m::Model; ftype="all") = getfnames(m.config; ftype=ftype)
@@ -132,7 +133,8 @@ function train(m::Model, traindata::Dict{String, Array{T,1} where T};
             if numtexts == 1
                 m.model = buildsentimentanalysis(outputsize; pdrop=0.5)
             else
-                m.model = buildquestionmatching(outputsize; vocsize=m.params["vocsize"],
+                m.model = buildquestionmatching(outputsize;
+                                                vocsize=m.params["vocsize"],
                                                 pdrop=0.5)
             end
         else
@@ -151,7 +153,7 @@ function train(m::Model, traindata::Dict{String, Array{T,1} where T};
 
     dtrn = minibatch(xtrn, ytrn, m.params["batchsize"]; shuffle=true)
     progress!(adam(m.model, repeat(dtrn, epochs)))
-    save(joinpath(SAVEDIR, "model.jld2"), "model", m.model)
+    save(joinpath(SAVEDIR, "$(m.name).jld2"), "model", m.model)
     m, dtrn
 end
 
