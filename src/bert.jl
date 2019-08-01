@@ -418,9 +418,13 @@ function load_from_torch_classification(model, num_encoder, atype, torch_model)
     return model
 end
 
-function bert()
+function bert(; atype=nothing)
+    if atype == nothing
+        atype = gpu() >= 0 ? KnetArray{Float32} : Array{Float32}
+    end
+
     config = BertConfig(768, 30522, 3072, 512, 64, 2, 12, 12, 8,
-                        Array{Float32}, 0.1, 0.1, "gelu")
+                        atype, 0.1, 0.1, "gelu")
     model = BertClassification(config, 2)
     return model, config
     #@pyimport torch
