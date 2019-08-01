@@ -3,14 +3,15 @@ using Knet: KnetArray, RNN, Param, relu, sumabs2, mat, conv4, pool, dropout,
 using Statistics: mean
 
 
-struct Layer; w; b; f; pdrop; end
+struct LinearLayer; w; b; f; pdrop; end
 
-Layer(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
-      atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) = Layer(
+LinearLayer(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
+      atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) = LinearLayer(
           Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
 
-(l::Layer)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
-(l::Layer)(x, y) = sumabs2(y - l(x)) / size(y,2)
+(l::LinearLayer)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
+(l::LinearLayer)(x, y) = sumabs2(y - l(x)) / size(y,2)
+
 
 struct LinearChain
     layers
