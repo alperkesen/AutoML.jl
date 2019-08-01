@@ -10,5 +10,7 @@ include("utils.jl")
 include("build.jl")
 include("model.jl")
 include("examples.jl")
+include("resnet.jl")
+include("bert.jl")
 
 end
