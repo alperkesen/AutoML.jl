@@ -435,6 +435,13 @@ function bert(; atype=nothing)
     #features = [model.bert(input_ids[i], segmentids[i]; attention_mask=input_masks[i]), for i=1:length(input_ids)]
 end
 
+function PretrainedBert()
+    model, config = AutoML.bert()
+    torch = pyimport("torch")
+    torch_model = torch.load(joinpath(DATADIR, "bert", "model.pt"))
+    model = load_from_torch_base(model, config.num_encoder, config.atype, torch_model)
+end
+
 function wordpiece_tokenize(token, dict)
     # This is a longest-match-first algorithm.
     out_tokens = []
@@ -561,7 +568,7 @@ function preprocessbert(x; lendoc=64)
     input_ids, input_mask, segment_ids
 end
 
-function PretrainedBert(; loadpath=nothing)
+function loadpretrainedbert(; loadpath=nothing)
     loadpath = loadpath != nothing ? loadpath :
         joinpath(DATADIR, "bert", "bert.jld2")
     model, config = bert()

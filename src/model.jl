@@ -105,16 +105,11 @@ function preprocess(m::Model, data; changevoc=false)
             docs = read_and_process(data[fname], m.vocabulary)
             inputids, masks, segmentids = preprocessbert(docs)
             bert = m.extractor["bert"]
-            preprocessed[fname] = [bert.bert(inputids[i], segmentids[i];
-                                             attention_mask=masks[i])[:, 1, end]
+            preprocessed[fname] = [bert.bert(
+                inputids[i],
+                segmentids[i];
+                attention_mask=masks[i])[:, :, end][:, 1]
                                    for i in 1:length(inputids)]
-
-            #ids, voc = preprocesstext(data[fname]; voc=m.vocabulary,
-            #                          changevoc=changevoc,
-            #                          lensentence=m.params["lensentence"])
-            #preprocessed[fname] = ids
-            #m.vocabulary = voc
-            #m.params["vocsize"] = length(voc)
         else
             preprocessed[fname] = data[fname]
         end
