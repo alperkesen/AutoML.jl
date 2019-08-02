@@ -561,7 +561,7 @@ function preprocessbert(x; lendoc=64)
     input_ids, input_mask, segment_ids
 end
 
-function pretrainedbert(; loadpath=nothing)
+function PretrainedBert(; loadpath=nothing)
     loadpath = loadpath != nothing ? loadpath :
         joinpath(DATADIR, "bert", "bert.jld2")
     model, config = bert()

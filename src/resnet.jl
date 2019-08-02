@@ -1,4 +1,33 @@
-using Knet: gpu, conv4, value
+using Knet: Knet, gpu, conv4, value
+
+include(Knet.dir("data","imagenet.jl"))
+
+mutable struct ResNet
+    w
+    ms
+    avgimg
+    atype
+end
+
+function ResNet(;name="imagenet-resnet-101-dag", atype=nothing)
+    if atype == nothing
+        atype = gpu() >= 0 ? KnetArray{Float32} : Array{Float32}
+    end
+
+    model = matconvnet(name)
+
+    avgimg = model["meta"]["normalization"]["averageImage"]
+    avgimg = convert(atype, avgimg)
+
+    w, ms = get_params(model["params"], atype)
+    ResNet(w, ms, avgimg, atype)
+end
+
+function (r::ResNet)(path::String)
+    img = imgdata(path, r.avgimg)
+    x = convert(r.atype, img)
+    resnet101(r.w, x, r.ms)
+end
 
 function resnet(path)
     atype = gpu()>=0 ? KnetArray{Float64} : Array{Float64}

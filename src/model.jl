@@ -14,15 +14,18 @@ mutable struct Model
     savepath::String
     vocabulary
     params
+    extractor
 end
 
 Model(config::Config; name="model", savedir=SAVEDIR, voc=nothing,
-      params=PARAMS) = Model(config, name, nothing, savedir, voc, params)
+      params=PARAMS, extractor=Dict()) = Model(config, name, nothing, savedir,
+                                               voc, params, extractor)
 Model(inputs::Array{Tuple{String, String},1},
       outputs::Array{Tuple{String, String},1};
-      name="model", savedir=SAVEDIR, voc=nothing, params=PARAMS) = Model(
-          Config(inputs, outputs), name=name, savedir=SAVEDIR, voc=voc,
-          params=params)
+      name="model", savedir=SAVEDIR, voc=nothing, params=PARAMS,
+      extractor=Dict()) = Model(Config(inputs, outputs), name=name,
+                                savedir=SAVEDIR, voc=voc, params=params,
+                                extractor=extractor)
 
 getfeatures(m::Model; ftype="all") = getfeatures(m.config; ftype=ftype)
 getfnames(m::Model; ftype="all") = getfnames(m.config; ftype=ftype)
@@ -63,6 +66,15 @@ function preprocess(m::Model, data; changevoc=false)
     featurelist = getfeatures(m; ftype="all")
     commonfeatures = [(fname, ftype) for (fname, ftype) in featurelist
                       if in(fname, keys(data))]
+    if istextmodel(m) && !haskey(m.extractor, "bert")
+        m.extractor["bert"] = PretrainedBert()
+        vocpath = joinpath(DATADIR, "bert", "bert-base-uncased-vocab.txt")
+        m.vocabulary = initializevocab(vocpath)
+    end
+
+    if isimagemodel(m) && !haskey(m.extractor, "resnet")
+        m.extractor["resnet"] = ResNet()
+    end
 
     for (fname, ftype) in commonfeatures
         if ftype == STRING
@@ -89,12 +101,19 @@ function preprocess(m::Model, data; changevoc=false)
             preprocessed[fname] = [Float64.(readimage(
                 imagepath; dirpath="cifar_100")) for imagepath in data[fname]]
         elseif ftype == TEXT
-            ids, voc = preprocesstext(data[fname]; voc=m.vocabulary,
-                                      changevoc=changevoc,
-                                      lensentence=m.params["lensentence"])
-            preprocessed[fname] = ids
-            m.vocabulary = voc
-            m.params["vocsize"] = length(voc)
+            docs = read_and_process(data[fname], m.vocabulary)
+            inputids, masks, segmentids = preprocessbert(docs)
+            bert = m.extractor["bert"]
+            preprocessed[fname] = [bert.bert(inputids[i], segmentids[i];
+                                             attention_mask=masks[i])[:, 1, end]
+                                   for i in 1:length(inputids)]
+
+            #ids, voc = preprocesstext(data[fname]; voc=m.vocabulary,
+            #                          changevoc=changevoc,
+            #                          lensentence=m.params["lensentence"])
+            #preprocessed[fname] = ids
+            #m.vocabulary = voc
+            #m.params["vocsize"] = length(voc)
         else
             preprocessed[fname] = data[fname]
         end
