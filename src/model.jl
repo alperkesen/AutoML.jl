@@ -100,7 +100,7 @@ function preprocess(m::Model, data; changevoc=false)
         elseif ftype == IMAGE
             resnet = m.extractor["resnet"]
             preprocessed[fname] = [resnet(joinpath(DATADIR, "cifar_100", path)
-                                          for path in data[fname]]
+                                          for path in data[fname])]
         elseif ftype == TEXT
             docs = read_and_process(data[fname], m.vocabulary)
             inputids, masks, segmentids = preprocessbert(docs)
