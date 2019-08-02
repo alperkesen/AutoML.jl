@@ -105,6 +105,7 @@ function preprocess(m::Model, data; changevoc=false)
             docs = read_and_process(data[fname], m.vocabulary)
             inputids, masks, segmentids = preprocessbert(docs)
             bert = m.extractor["bert"]
+            print("Bert...")
             preprocessed[fname] = [bert.bert(
                 inputids[i],
                 segmentids[i];
@@ -118,25 +119,18 @@ function preprocess(m::Model, data; changevoc=false)
 end
 
 function preparedata(m::Model, traindata; output=true, changevoc=false)
+    atype = gpu() >= 0 ? KnetArray{Float64} : Array{Float64}
     trn = preprocess(m, traindata; changevoc=changevoc)
 
     xtrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="input"))
 
-    if isimagemodel(m)
-        catdim = length(size(first(values(xtrn))[1])) + 1
-        xtrn = Array(cat(collect(values(xtrn))[1]..., dims=catdim))
-    elseif istextmodel(m)
-        xtrn = AutoML.slicematrix(collect(hcat(values(xtrn)...)))
-    else
-        catdim = length(size(first(values(xtrn)))) + 1
-        xtrn = Array(cat(values(xtrn)..., dims=catdim)')
-        xtrn = float(xtrn)
-    end
+    xtrn = vcat([atype(hcat(value...)) for (fname, value) in xtrn]...)
 
     if output
         ytrn = Dict(fname => trn[fname]
                     for fname in getfnames(m; ftype="output"))
-        ytrn = slicematrix(hcat(values(ytrn)...))
+        ytrn = vcat([atype(hcat(value...)) for (fname, value) in ytrn]...)
+        ytrn = iscategorical(m) ? Array{Int64}(ytrn) : ytrn
 
         return xtrn, ytrn
     end
@@ -146,46 +140,16 @@ end
 
 function train(m::Model, traindata::Dict{String, Array{T,1} where T};
                epochs=1, cv=false)
-    atype = gpu() >= 0 ? KnetArray : Array
     xtrn, ytrn = preparedata(m, traindata; changevoc=true)
 
     inputsize = size(xtrn, 1)
-    outputsize = size(ytrn, 1)
+    outputsize = iscategorical(m) ? length(unique(ytrn)) : size(ytrn, 1)
+    chain = iscategorical(m) ? CategoricalChain : LinearChain
+    hiddensize = 20
 
-    if !iscategorical(m)
-        println("Building linear model...")
-        m.model = buildlinearestimator(inputsize, outputsize)
-    else
-        outputsize = length(unique(ytrn))
-
-        if isimagemodel(m)
-            m.model = buildimageclassification(inputsize, outputsize)
-        elseif istextmodel(m)
-            println("Building sequential model...")
- 
-            fdict = getfdict(m.config, ftype="input")
-            numtexts = fdict[TEXT]
-
-            if numtexts == 1
-                m.model = buildsentimentanalysis(outputsize; pdrop=0.5)
-            else
-                m.model = buildquestionmatching(outputsize;
-                                                vocsize=m.params["vocsize"],
-                                                pdrop=0.5)
-            end
-        else
-            println("Building classification model...")
-            m.model = buildclassificationmodel(inputsize, outputsize; pdrop=0)
-        end
-    end
-
-    if in(typeof(m.model), [CategoricalChain, LinearChain])
-        xtrn = atype(xtrn)
-    end
-
-    if typeof(m.model) == LinearChain
-        ytrn = atype(ytrn)
-    end
+    layer = LinearLayer(inputsize, hiddensize, 0.01, relu)
+    layer2 = LinearLayer(hiddensize, outputsize, 0.01, identity)
+    m.model = chain(layer, layer2)
 
     dtrn = minibatch(xtrn, ytrn, m.params["batchsize"]; shuffle=true)
     progress!(adam(m.model, repeat(dtrn, epochs)))
