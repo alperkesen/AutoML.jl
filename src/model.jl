@@ -99,8 +99,8 @@ function preprocess(m::Model, data; changevoc=false)
             preprocessed[fname] = doc2ids(data[fname])
         elseif ftype == IMAGE
             resnet = m.extractor["resnet"]
-            preprocessed[fname] = [resnet(joinpath(DATADIR, "cifar_100", path)
-                                          for path in data[fname])]
+            preprocessed[fname] = [resnet(joinpath(DATADIR, "cifar_100", path))
+                                          for path in data[fname]]
         elseif ftype == TEXT
             docs = read_and_process(data[fname], m.vocabulary)
             inputids, masks, segmentids = preprocessbert(docs)
