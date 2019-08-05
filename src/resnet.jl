@@ -17,7 +17,7 @@ function ResNet(;name="imagenet-resnet-101-dag", atype=nothing)
     model = matconvnet(name)
 
     avgimg = model["meta"]["normalization"]["averageImage"]
-    avgimg = convert(atype, avgimg)
+    avgimg = convert(Array{Float32}, avgimg)
 
     w, ms = get_params(model["params"], atype)
     ResNet(w, ms, avgimg, atype)
@@ -56,6 +56,7 @@ function resnet101(w,x,ms; mode=1)
     windowsize = size(r5, 1)
     # fully connected layer
     pool5  = pool(r5; stride=1, window=windowsize, mode=2)
+    return mat(pool5)
     #fc1000 = w[313] * mat(pool5) .+ w[314]
 end
 
