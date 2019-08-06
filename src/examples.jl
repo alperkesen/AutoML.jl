@@ -74,29 +74,26 @@ function train_gene_sequences(; epochs=1)
 end
 
 function train_cifar_100(; smallset=true, epochs=1)
-    cifar_100 = AutoML.cifar_100()
+    trn, tst = AutoML.cifar100()
     
     if smallset
         selected = Random.shuffle(Random.seed!(0), Vector(1:50000))[1024:1600]
-        cifar_100 = cifar_100[selected, :]
+        trn = trn[selected, :]
     end
 
-    cifar_100_data = AutoML.csv2data(cifar_100)
+    cifar_100_data = AutoML.csv2data(trn)
 
     cifar_100_inputs = [("image_path", "Image")]
     cifar_100_outputs = [("class", "Category")]
 
     model = AutoML.Model(cifar_100_inputs, cifar_100_outputs; name="cifar100")
-    result = AutoML.train(model, cifar_100_data; epochs=epochs)
-
-    xtrn, ytrn = preparedata(model, cifar_100_data)
-    xtrn = atype(xtrn)
-
+    model, dtrn = AutoML.train(model, cifar_100_data; epochs=epochs)
+  
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
 
-    println("Test accuracy:")
-    println(accuracy(model.model, dtst))
+    # println("Test accuracy:")
+    # println(accuracy(model.model, dtst))
 end
 
 function train_imdb(; epochs=1)

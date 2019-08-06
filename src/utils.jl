@@ -16,8 +16,10 @@ function splice_junction()
                            "splice_junction_gene_sequences.csv"))
 end
 
-function cifar_100()
-    df = CSV.read(joinpath(DATADIR, "cifar_100", "train.csv"))
+function cifar100()
+    trn = CSV.read(joinpath(DATADIR, "cifar_100", "train.csv"))
+    tst = CSV.read(joinpath(DATADIR, "cifar_100", "test.csv"))
+    trn, tst
 end
 
 function imdb_movie_review()
