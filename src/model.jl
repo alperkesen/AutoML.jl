@@ -99,13 +99,14 @@ function preprocess(m::Model, data; changevoc=false)
             preprocessed[fname] = doc2ids(data[fname])
         elseif ftype == IMAGE
             resnet = m.extractor["resnet"]
+            println("Resnet...")
             preprocessed[fname] = [resnet(joinpath(DATADIR, "cifar_100", path))
                                           for path in data[fname]]
         elseif ftype == TEXT
             docs = read_and_process(data[fname], m.vocabulary)
             inputids, masks, segmentids = preprocessbert(docs)
             bert = m.extractor["bert"]
-            print("Bert...")
+            println("Bert...")
             preprocessed[fname] = [bert.bert(
                 inputids[i],
                 segmentids[i];
@@ -138,18 +139,22 @@ function preparedata(m::Model, traindata; output=true, changevoc=false)
     return xtrn
 end
 
+function build(m::Model, inputsize, outputsize)
+    chain = iscategorical(m) ? CategoricalChain : LinearChain
+    hiddensize = 20
+
+    layer = LinearLayer(inputsize, hiddensize, 0.01, relu; pdrop=0)
+    layer2 = LinearLayer(hiddensize, outputsize, 0.01, identity; pdrop=0)
+    m.model = chain(layer, layer2)
+end
+
 function train(m::Model, traindata::Dict{String, Array{T,1} where T};
                epochs=1, cv=false)
     xtrn, ytrn = preparedata(m, traindata; changevoc=true)
 
     inputsize = size(xtrn, 1)
     outputsize = iscategorical(m) ? length(unique(ytrn)) : size(ytrn, 1)
-    chain = iscategorical(m) ? CategoricalChain : LinearChain
-    hiddensize = 20
-
-    layer = LinearLayer(inputsize, hiddensize, 0.01, relu)
-    layer2 = LinearLayer(hiddensize, outputsize, 0.01, identity)
-    m.model = chain(layer, layer2)
+    build(m, inputsize, outputsize)
 
     dtrn = minibatch(xtrn, ytrn, m.params["batchsize"]; shuffle=true)
     progress!(adam(m.model, repeat(dtrn, epochs)))
