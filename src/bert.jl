@@ -215,7 +215,7 @@ function Bert(config)
 end
 
 # x and segment_ids are SxB integers
-function (b::Bert)(x, segment_ids; attention_mask=nothing)
+function (b::Bert)(x, segment_ids; attention_mask=nothing, extractlayer=11)
     # Init attention_mask if it's not given
     attention_mask = attention_mask == nothing ? ones(size(x)) : attention_mask
     attention_mask = reshape(attention_mask, (size(attention_mask,1), 1, 1, size(attention_mask,2))) # Make it 4d
@@ -223,9 +223,14 @@ function (b::Bert)(x, segment_ids; attention_mask=nothing)
     attention_mask = b.atype(attention_mask)
 
     x = b.embed_layer(x, segment_ids)
-    for encoder in b.encoder_stack
-        x = encoder(x, attention_mask)
+
+    numencoder = length(b.encoder_stack)
+    extractlayer = extractlayer >= numencoder ? numencoder : extractlayer
+
+    for i in 1:extractlayer
+        x = b.encoder_stack[i](x, attention_mask)
     end
+
     return x
 end
 

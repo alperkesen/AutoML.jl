@@ -107,10 +107,10 @@ function preprocess(m::Model, data; changevoc=false)
             inputids, masks, segmentids = preprocessbert(docs)
             bert = m.extractor["bert"]
             println("Bert...")
-            preprocessed[fname] = [bert.bert(
+            preprocessed[fname] = [mean(bert.bert(
                 inputids[i],
                 segmentids[i];
-                attention_mask=masks[i])[:, :, end][:, 1]
+                attention_mask=masks[i])[:, :, end], dims=2)
                                    for i in 1:length(inputids)]
         else
             preprocessed[fname] = data[fname]
@@ -141,10 +141,10 @@ end
 
 function build(m::Model, inputsize, outputsize)
     chain = iscategorical(m) ? CategoricalChain : LinearChain
-    hiddensize = 20
+    hiddensize = 512
 
-    layer = LinearLayer(inputsize, hiddensize, 0.01, relu; pdrop=0)
-    layer2 = LinearLayer(hiddensize, outputsize, 0.01, identity; pdrop=0)
+    layer = LinearLayer(inputsize, hiddensize, 0.01, relu; pdrop=0.1)
+    layer2 = LinearLayer(hiddensize, outputsize, 0.01, identity; pdrop=0.1)
     m.model = chain(layer, layer2)
 end
 
