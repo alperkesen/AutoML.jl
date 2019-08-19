@@ -100,18 +100,38 @@ function preprocess(m::Model, data; changevoc=false)
         elseif ftype == IMAGE
             resnet = m.extractor["resnet"]
             println("Resnet...")
-            preprocessed[fname] = [resnet(joinpath(DATADIR, "cifar_100", path))
-                                          for path in data[fname]]
+
+            paths = data[fname]
+            imgs = reshape([], 2048, 0)
+            n = 1000
+
+            for i in 1:n:length(paths)
+                println("Resnet $i:")
+                j = (i+n-1) < length(paths) ? i+n-1 : length(paths)
+                @time imgs = hcat(imgs, Array{Float64}.([resnet(joinpath(DATADIR, "cifar_100", path))
+                                 for path in paths[i:j]])...)
+            end
+            preprocessed[fname] = [imgs[:,i] for i in 1:size(imgs,2)]
+
         elseif ftype == TEXT
-            docs = read_and_process(data[fname], m.vocabulary)
-            inputids, masks, segmentids = preprocessbert(docs)
             bert = m.extractor["bert"]
             println("Bert...")
-            preprocessed[fname] = [mean(bert.bert(
-                inputids[i],
-                segmentids[i];
-                attention_mask=masks[i])[:, :, end], dims=2)
-                                   for i in 1:length(inputids)]
+            texts = []
+            n = 1000
+
+            docs = read_and_process(data[fname], m.vocabulary)
+            inputids, masks, segmentids = preprocessbert(docs)
+
+            for i=1:n:length(inputids)
+                j = (i+n-1) < length(inputids) ? i+n-1 : length(inputids)
+                vectors = [mean(bert.bert(
+                    inputids[k],
+                    segmentids[k];
+                    attention_mask=masks[k])[:, :, end], dims=2)
+                           for k in i:j]
+                push!(texts, vectors)
+            end
+            preprocessed[fname] = vcat(texts...)
         else
             preprocessed[fname] = data[fname]
         end
