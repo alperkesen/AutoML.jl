@@ -225,7 +225,7 @@ function getbatches(m::Model, trn; n=1000, batchsize=32)
     batches = []
 
     for i=1:n:size(trn,1)
-        j = (i+n) < size(trn,1) ? i+n : size(trn,1)
+        j = (i+n-1) < size(trn,1) ? i+n-1 : size(trn,1)
         dict = AutoML.csv2data(trn[i:j, :])
         @time x,y = preparedata(m, dict)
         d = minibatch(x,y,batchsize;shuffle=true)
