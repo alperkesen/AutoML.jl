@@ -61,21 +61,11 @@ function loadmodel(loadpath::String)
     m
 end
 
-function preprocess(m::Model, data; changevoc=false)
+function preprocess(m::Model, data)
     preprocessed = Dict()
     featurelist = getfeatures(m; ftype="all")
     commonfeatures = [(fname, ftype) for (fname, ftype) in featurelist
                       if in(fname, keys(data))]
-    if istextmodel(m) && !haskey(m.extractor, "bert")
-        m.extractor["bert"] = PretrainedBert()
-        vocpath = joinpath(DATADIR, "bert", "bert-base-uncased-vocab.txt")
-        m.vocabulary = initializevocab(vocpath)
-    end
-
-    if isimagemodel(m) && !haskey(m.extractor, "resnet")
-        m.extractor["resnet"] = ResNet()
-    end
-
     for (fname, ftype) in commonfeatures
         if ftype == STRING
             preprocessed[fname] = doc2ids(data[fname])
@@ -97,41 +87,6 @@ function preprocess(m::Model, data; changevoc=false)
             end
         elseif ftype == CATEGORY
             preprocessed[fname] = doc2ids(data[fname])
-        elseif ftype == IMAGE
-            resnet = m.extractor["resnet"]
-            println("Resnet...")
-
-            paths = data[fname]
-            imgs = reshape([], 2048, 0)
-            n = 1000
-
-            for i in 1:n:length(paths)
-                println("Resnet $i:")
-                j = (i+n-1) < length(paths) ? i+n-1 : length(paths)
-                @time imgs = hcat(imgs, Array{Float64}.([resnet(joinpath(DATADIR, "cifar_100", path))
-                                 for path in paths[i:j]])...)
-            end
-            preprocessed[fname] = [imgs[:,i] for i in 1:size(imgs,2)]
-
-        elseif ftype == TEXT
-            bert = m.extractor["bert"]
-            println("Bert...")
-            texts = []
-            n = 1000
-
-            docs = read_and_process(data[fname], m.vocabulary)
-            inputids, masks, segmentids = preprocessbert(docs)
-
-            for i=1:n:length(inputids)
-                j = (i+n-1) < length(inputids) ? i+n-1 : length(inputids)
-                vectors = [mean(bert.bert(
-                    inputids[k],
-                    segmentids[k];
-                    attention_mask=masks[k])[:, :, end], dims=2)
-                           for k in i:j]
-                push!(texts, vectors)
-            end
-            preprocessed[fname] = vcat(texts...)
         else
             preprocessed[fname] = data[fname]
         end
@@ -139,9 +94,51 @@ function preprocess(m::Model, data; changevoc=false)
     preprocessed
 end
 
-function preparedata(m::Model, traindata; output=true, changevoc=false)
+function preprocess2(m::Model, data)
+    preprocessed = Dict()
+    featurelist = getfeatures(m; ftype="all")
+    commonfeatures = [(fname, ftype) for (fname, ftype) in featurelist
+                      if in(fname, keys(data))]
+
+    if istextmodel(m) && !haskey(m.extractor, "bert")
+        m.extractor["bert"] = PretrainedBert()
+        vocpath = joinpath(DATADIR, "bert", "bert-base-uncased-vocab.txt")
+        m.vocabulary = initializevocab(vocpath)
+    end
+
+    if isimagemodel(m) && !haskey(m.extractor, "resnet")
+        m.extractor["resnet"] = ResNet()
+    end
+
+    for (fname, ftype) in commonfeatures
+        if ftype == IMAGE
+            resnet = m.extractor["resnet"]
+            println("Resnet...")
+
+            preprocessed[fname] = [resnet(joinpath(DATADIR, "cifar_100", path))
+                                   for path in data[fname]]
+        elseif ftype == TEXT
+            bert = m.extractor["bert"]
+            println("Bert...")
+
+            docs = read_and_process(data[fname], m.vocabulary)
+            inputids, masks, segmentids = preprocessbert(docs)
+
+            preprocessed[fname] = [mean(bert.bert(
+                inputids[k],
+                segmentids[k];
+                attention_mask=masks[k])[:, :, end], dims=2)
+                       for k in 1:length(inputids)]
+        else
+            preprocessed[fname] = data[fname]
+        end
+    end
+    preprocessed
+end
+
+function preparedata(m::Model, traindata; output=true)
     atype = gpu() >= 0 ? KnetArray{Float64} : Array{Float64}
-    trn = preprocess(m, traindata; changevoc=changevoc)
+    trn = preprocess2(m, traindata)
 
     xtrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="input"))
 
@@ -161,15 +158,16 @@ end
 
 function build(m::Model, inputsize, outputsize)
     chain = iscategorical(m) ? CategoricalChain : LinearChain
-    hiddensize = 512
+    hiddensize = 1024
 
-    layer = LinearLayer(inputsize, hiddensize, 0.01, relu; pdrop=0.1)
-    layer2 = LinearLayer(hiddensize, outputsize, 0.01, identity; pdrop=0.1)
+    layer = LinearLayer(inputsize, hiddensize, 0.01, relu; pdrop=0)
+    layer2 = LinearLayer(hiddensize, outputsize, 0.01, identity; pdrop=0)
     m.model = chain(layer, layer2)
 end
 
 function train(m::Model, traindata::Dict{String, Array{T,1} where T};
                epochs=1, cv=false)
+    traindata = preprocess(m, traindata)
     xtrn, ytrn = preparedata(m, traindata; changevoc=true)
 
     inputsize = size(xtrn, 1)
@@ -243,12 +241,14 @@ end
 
 function getbatches(m::Model, trn; n=1000, batchsize=32)
     batches = []
+    traindata = csv2data(trn)
+    traindata = preprocess(m, traindata)
 
     for i=1:n:size(trn,1)
         j = (i+n-1) < size(trn,1) ? i+n-1 : size(trn,1)
-        dict = AutoML.csv2data(trn[i:j, :])
+        dict = Dict(fname => values[i:j] for (fname, values) in traindata)
         @time x,y = preparedata(m, dict)
-        d = minibatch(x,y,batchsize;shuffle=true)
+        d = minibatch(x,y,batchsize;shuffle=false)
         push!(batches, d)
     end
 
