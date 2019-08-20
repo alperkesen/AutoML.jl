@@ -1,5 +1,6 @@
 using Knet: Knet, AutoGrad, adam, progress!, minibatch, save, relu, gpu, KnetArray, load
 using Statistics: mean
+using DataFrames
 using Plots
 
 PARAMS = Dict("batchsize" => 32,
@@ -119,11 +120,10 @@ function preprocess2(m::Model, data)
                                    for path in data[fname]]
         elseif ftype == TEXT
             bert = m.extractor["bert"]
-            println("Bert...")
-
             docs = read_and_process(data[fname], m.vocabulary)
             inputids, masks, segmentids = preprocessbert(docs)
 
+            println("Bert...")
             preprocessed[fname] = [mean(bert.bert(
                 inputids[k],
                 segmentids[k];
@@ -158,23 +158,22 @@ end
 
 function build(m::Model, inputsize, outputsize)
     chain = iscategorical(m) ? CategoricalChain : LinearChain
-    hiddensize = 1024
+    hiddensize = 200
 
     layer = LinearLayer(inputsize, hiddensize, 0.01, relu; pdrop=0)
     layer2 = LinearLayer(hiddensize, outputsize, 0.01, identity; pdrop=0)
+    layer3 = LinearLayer(inputsize, outputsize, 0.01, identity; pdrop=0)
     m.model = chain(layer, layer2)
 end
 
 function train(m::Model, traindata::Dict{String, Array{T,1} where T};
                epochs=1, cv=false)
-    traindata = preprocess(m, traindata)
-    xtrn, ytrn = preparedata(m, traindata; changevoc=true)
+    dtrn = getbatches(m, traindata; batchsize=m.params["batchsize"])
 
-    inputsize = size(xtrn, 1)
-    outputsize = iscategorical(m) ? length(unique(ytrn)) : size(ytrn, 1)
+    inputsize = size(dtrn.x, 1)
+    outputsize = iscategorical(m) ? length(unique(dtrn.y)) : size(dtrn.y, 1)
     build(m, inputsize, outputsize)
 
-    dtrn = minibatch(xtrn, ytrn, m.params["batchsize"]; shuffle=true)
     progress!(adam(m.model, repeat(dtrn, epochs)))
     savemodel(m)
     m, dtrn
@@ -196,6 +195,7 @@ end
 
 function predictdata(m::Model, example)
     data = Dict(fname => [value] for (fname, value) in example)
+    data = preprocess(m, data)
     x = preparedata(m, data; output=false)
 
     iscategorical(m) ? predict(m.model, x) : m.model(x)
@@ -239,14 +239,15 @@ function crossvalidate(m::Model, x, y; k=5, epochs=1)
     return m
 end
 
-function getbatches(m::Model, trn; n=1000, batchsize=32)
+function getbatches(m::Model, traindata::Dict{String, Array{T,1} where T};
+                    n=1000, batchsize=32)
     batches = []
-    traindata = csv2data(trn)
-    traindata = preprocess(m, traindata)
+    trn = preprocess(m, traindata)
+    numexamples = length(iterate(values(trn))[1])
 
-    for i=1:n:size(trn,1)
-        j = (i+n-1) < size(trn,1) ? i+n-1 : size(trn,1)
-        dict = Dict(fname => values[i:j] for (fname, values) in traindata)
+    for i=1:n:numexamples
+        j = (i+n-1) < numexamples ? i+n-1 : numexamples
+        dict = Dict(fname => values[i:j] for (fname, values) in trn)
         @time x,y = preparedata(m, dict)
         d = minibatch(x,y,batchsize;shuffle=false)
         push!(batches, d)
@@ -256,4 +257,9 @@ function getbatches(m::Model, trn; n=1000, batchsize=32)
     dy = [d.y for d in batches]
 
     dfinal = minibatch(hcat(dx...), hcat(dy...), batchsize; shuffle=true)
+end
+
+function getbatches(m::Model, df::DataFrames.DataFrame; args...)
+    traindata = csv2data(df)
+    getbatches(m, traindata; args...)
 end

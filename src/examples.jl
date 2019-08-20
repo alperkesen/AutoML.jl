@@ -3,8 +3,6 @@ import Random
 using Knet: gpu, KnetArray
 
 function train_house_rentals(; epochs=1)
-    atype = gpu()>=0 ? KnetArray{Float64} : Array{Float64}
-
     house_rentals = AutoML.house_rentals()
     trn, tst = splitdata(house_rentals; trainprop=0.8)
 
@@ -22,26 +20,19 @@ function train_house_rentals(; epochs=1)
 
     model = AutoML.Model(house_rentals_inputs, house_rentals_outputs;
                          name="houserentals")
-    result = AutoML.train(model, house_rentals_trn; epochs=epochs)
-
-    xtrn, ytrn = preparedata(model, house_rentals_trn)
-    xtst, ytst = preparedata(model, house_rentals_tst)
-
-    xtrn, ytrn = atype(xtrn), atype(ytrn)
-    xtst, ytst = atype(xtst), atype(ytst)
+    model, dtrn = AutoML.train(model, house_rentals_trn; epochs=epochs)
+    dtst = AutoML.getbatches(model, house_rentals_tst)
 
     println("Train error:")
-    println(model.model(xtrn, ytrn))
+    println(model.model(dtrn.x, dtrn.y))
 
     println("Test error:")
-    println(model.model(xtst, ytst))
+    println(model.model(dtst.x, dtst.y))
 
-    model, xtrn, ytrn, xtst, ytst
+    model, dtrn, dtst
 end
 
 function train_gene_sequences(; epochs=1)
-    atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}
-
     gene_sequences = AutoML.splice_junction()
     trn, tst = splitdata(gene_sequences; trainprop=0.8)
 
@@ -53,16 +44,8 @@ function train_gene_sequences(; epochs=1)
 
     model = AutoML.Model(gene_sequences_inputs, gene_sequences_outputs;
                          name="genesequences")
-    result = AutoML.train(model, gen_trn; epochs=epochs, cv=false)
-
-    xtrn, ytrn = preparedata(model, gen_trn)
-    xtrn = atype(xtrn)
-
-    xtst, ytst = preparedata(model, gen_tst)
-    xtst = atype(xtst)
-
-    dtrn = minibatch(xtrn, ytrn, model.params["batchsize"]; shuffle=true)
-    dtst = minibatch(xtst, ytst, model.params["batchsize"]; shuffle=true)
+    model, dtrn = AutoML.train(model, gen_trn; epochs=epochs, cv=false)
+    dtst = AutoML.getbatches(model, gen_tst)
 
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
@@ -77,23 +60,28 @@ function train_cifar_100(; smallset=true, epochs=1)
     trn, tst = AutoML.cifar100()
     
     if smallset
-        selected = Random.shuffle(Random.seed!(0), Vector(1:50000))[1024:1600]
+        selected = Random.shuffle(Random.seed!(0), Vector(1:10000))[1024:1600]
         trn = trn[selected, :]
+        tst = tst[selected, :]
     end
 
-    cifar_100_data = AutoML.csv2data(trn)
+    cifar_100_trn = AutoML.csv2data(trn)
+    cifar_100_tst = AutoML.csv2data(tst)
 
     cifar_100_inputs = [("image_path", "Image")]
     cifar_100_outputs = [("class", "Category")]
 
     model = AutoML.Model(cifar_100_inputs, cifar_100_outputs; name="cifar100")
-    model, dtrn = AutoML.train(model, cifar_100_data; epochs=epochs)
+    model, dtrn = AutoML.train(model, cifar_100_trn; epochs=epochs)
+    dtst = AutoML.getbatches(model, cifar_100_tst)
   
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
 
-    # println("Test accuracy:")
-    # println(accuracy(model.model, dtst))
+    println("Test accuracy:")
+    println(accuracy(model.model, dtst))
+
+    model, dtrn, dtst
 end
 
 function train_imdb(; epochs=1)
@@ -106,13 +94,8 @@ function train_imdb(; epochs=1)
     imdb_outputs = [("sentiment", "Category")]
 
     model = AutoML.Model(imdb_inputs, imdb_outputs; name="imdbreviews")
-    result = AutoML.train(model, imdb_trn; epochs=epochs)
-
-    xtrn, ytrn = preparedata(model, imdb_trn)
-    dtrn = minibatch(xtrn, ytrn, model.params["batchsize"]; shuffle=true)
-
-    xtst, ytst = preparedata(model, imdb_tst)
-    dtst = minibatch(xtst, ytst, model.params["batchsize"]; shuffle=true)
+    model, dtrn = AutoML.train(model, imdb_trn; epochs=epochs)
+    dtst = AutoML.getbatches(model, imdb_tst)
 
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
@@ -133,13 +116,8 @@ function train_quora(; epochs=1)
     quora_outputs = [("is_duplicate", "Binary Category")]
 
     model = AutoML.Model(quora_inputs, quora_outputs; name="quora")
-    result = AutoML.train(model, quora_trn; epochs=epochs)
-
-    xtrn, ytrn = preparedata(model, quora_trn)
-    dtrn = minibatch(xtrn, ytrn, model.params["batchsize"]; shuffle=true)
-
-    xtst, ytst = preparedata(model, quora_tst)
-    dtst = minibatch(xtst, ytst, model.params["batchsize"]; shuffle=true)
+    model, dtrn = AutoML.train(model, quora_trn; epochs=epochs)
+    dtst = AutoML.getbatches(model, quora_tst)
 
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
@@ -161,13 +139,8 @@ function train_default_of_credit(; epochs=1)
     credit_outputs = [("default.payment.next.month", "Binary Category")]
 
     model = AutoML.Model(credit_inputs, credit_outputs; name="defaultofcredit")
-    result = AutoML.train(model, credit_trn; epochs=epochs)
-
-    xtrn, ytrn = preparedata(model, credit_trn)
-    dtrn = minibatch(xtrn, ytrn, model.params["batchsize"]; shuffle=true)
-
-    xtst, ytst = preparedata(model, credit_tst)
-    dtst = minibatch(xtst, ytst, model.params["batchsize"]; shuffle=true)
+    model, dtrn = AutoML.train(model, credit_trn; epochs=epochs)
+    dtst = AutoML.getbatches(model, credit_tst)
 
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
