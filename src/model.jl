@@ -1,4 +1,5 @@
-using Knet: Knet, AutoGrad, adam, progress!, minibatch, save, relu, gpu, KnetArray, load
+using Knet: Knet, AutoGrad, adam, adam!, progress!, minibatch, save, relu,
+    gpu, KnetArray, load, sigm
 using Statistics: mean
 using DataFrames
 using Plots
@@ -158,25 +159,32 @@ end
 
 function build(m::Model, inputsize, outputsize)
     chain = iscategorical(m) ? CategoricalChain : LinearChain
-    hiddensize = 200
+    hiddensize = 512
 
     layer = LinearLayer(inputsize, hiddensize, 0.01, relu; pdrop=0)
     layer2 = LinearLayer(hiddensize, outputsize, 0.01, identity; pdrop=0)
-    layer3 = LinearLayer(inputsize, outputsize, 0.01, identity; pdrop=0)
+    layer3 = LinearLayer(inputsize, outputsize, 0.01, identity; pdrop=0.5)
+    m.model = chain(layer3)
     m.model = chain(layer, layer2)
 end
 
-function train(m::Model, traindata::Dict{String, Array{T,1} where T};
-               epochs=1, cv=false)
-    dtrn = getbatches(m, traindata; batchsize=m.params["batchsize"])
-
+function train(m::Model, dtrn::Knet.Data; epochs=1, showprogress=true,
+               savemodel=false)
     inputsize = size(dtrn.x, 1)
     outputsize = iscategorical(m) ? length(unique(dtrn.y)) : size(dtrn.y, 1)
     build(m, inputsize, outputsize)
 
-    progress!(adam(m.model, repeat(dtrn, epochs)))
-    savemodel(m)
+    showprogress ? progress!(adam(m.model, repeat(dtrn, epochs))) :
+        adam(m.model, repeat(dtrn, epochs))
+
+    savemodel && savemodel(m)
     m, dtrn
+end
+
+function train(m::Model, traindata::Dict{String, Array{T,1} where T};
+               epochs=1, showprogress=true, savemodel=false)
+    dtrn = getbatches(m, traindata; batchsize=m.params["batchsize"])
+    train(m, dtrn; epochs=epochs, showprogress=showprogress, savemodel=false)
 end
 
 function train(m::Model, trainpath::String; args...)
@@ -240,7 +248,7 @@ function crossvalidate(m::Model, x, y; k=5, epochs=1)
 end
 
 function getbatches(m::Model, traindata::Dict{String, Array{T,1} where T};
-                    n=1000, batchsize=32)
+                    n=1000, batchsize=32, showtime=true)
     batches = []
     trn = preprocess(m, traindata)
     numexamples = length(iterate(values(trn))[1])
@@ -248,7 +256,7 @@ function getbatches(m::Model, traindata::Dict{String, Array{T,1} where T};
     for i=1:n:numexamples
         j = (i+n-1) < numexamples ? i+n-1 : numexamples
         dict = Dict(fname => values[i:j] for (fname, values) in trn)
-        @time x,y = preparedata(m, dict)
+        x,y = showtime ? @time(preparedata(m, dict)) : preparedata(m, dict)
         d = minibatch(x,y,batchsize;shuffle=false)
         push!(batches, d)
     end
