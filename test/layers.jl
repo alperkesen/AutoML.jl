@@ -6,7 +6,7 @@ using Knet: relu, gpu
 
     input = rand(1:10)
     output = rand(1:10)
-    layer = AutoML.Layer(input, output)
+    layer = AutoML.LinearLayer(input, output)
 
     batchsize = map(x->2^x, rand(3:10))
     x = atype(randn(input, batchsize))
@@ -26,8 +26,8 @@ end
     hidden = rand(1:10)
     output = rand(1:10)
 
-    layer = AutoML.Layer(input, hidden)
-    layer2 = AutoML.Layer(hidden, output)
+    layer = AutoML.LinearLayer(input, hidden)
+    layer2 = AutoML.LinearLayer(hidden, output)
     chain = AutoML.LinearChain(layer, layer2)
 
     batchsize = map(x->2^x, rand(3:10))
@@ -48,8 +48,8 @@ end
     hidden = rand(1:10)
     output = rand(1:10)
 
-    layer = AutoML.Layer(input, hidden)
-    layer2 = AutoML.Layer(hidden, output)
+    layer = AutoML.LinearLayer(input, hidden)
+    layer2 = AutoML.LinearLayer(hidden, output)
     chain = AutoML.CategoricalChain(layer, layer2)
 
     batchsize = map(x->2^x, rand(3:10))
