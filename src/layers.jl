@@ -1,5 +1,5 @@
 using Knet: KnetArray, RNN, Param, relu, sumabs2, mat, conv4, pool, dropout,
-    nll, gpu
+    nll, gpu, xavier
 using Statistics: mean
 
 
@@ -7,7 +7,7 @@ struct LinearLayer; w; b; f; pdrop; end
 
 LinearLayer(i::Int, o::Int, scale=0.01, f=relu; pdrop=0.5,
       atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) = LinearLayer(
-          Param(atype(scale * randn(o, i))), Param(atype(zeros(o))), f, pdrop)
+          Param(atype(xavier(o, i))), Param(atype(zeros(o))), f, pdrop)
 
 (l::LinearLayer)(x) = l.f.(l.w * mat(dropout(x, l.pdrop)) .+ l.b)
 (l::LinearLayer)(x, y) = sumabs2(y - l(x)) / size(y,2)
