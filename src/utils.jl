@@ -187,12 +187,35 @@ function cleandata(df::DataFrames.DataFrame)
     df = dropmissing(df)
 end
 
-function splitdata(df::DataFrames.DataFrame; trainprop=0.8)
-    examplesize = size(df, 1)
-    trainsize = Int(round(examplesize * trainprop))
-    trnindices = sample(1:examplesize, trainsize, replace=false)
-    tstindices = [i for i=1:examplesize if !in(i, trnindices)]
-    trn, tst = df[trnindices, :], df[tstindices, :]
+function splitdata(df::DataFrames.DataFrame, outputcolumn=nothing; trainprop=0.8)
+    categorical = outputcolumn != nothing
+
+    if !categorical
+        examplesize = size(df, 1)
+        trainsize = Int(round(examplesize * trainprop))
+
+        trnindices = sample(1:examplesize, trainsize, replace=false)
+        tstindices = [i for i=1:examplesize if !in(i, trnindices)]
+
+        trn, tst = df[trnindices, :], df[tstindices, :]
+    else
+        classes = unique(outputcolumn)
+        divided = [df[outputcolumn .== c, :] for c in classes]
+        trainframes, testframes = [], []
+        for rows in divided
+            examplesize = size(rows, 1)
+            trainsize = Int(round(examplesize * trainprop))
+
+            trnindices = sample(1:examplesize, trainsize, replace=false)
+            tstindices = [i for i=1:examplesize if !in(i, trnindices)]
+
+            push!(trainframes, rows[trnindices, :])
+            push!(testframes, rows[tstindices, :])
+        end
+        trn = vcat(trainframes...)
+        tst = vcat(testframes...)
+    end
+    trn, tst
 end
 
 function kfolds(x, k::Int)

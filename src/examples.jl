@@ -34,7 +34,7 @@ end
 
 function train_gene_sequences(; epochs=1)
     gene_sequences = AutoML.splice_junction()
-    trn, tst = splitdata(gene_sequences; trainprop=0.8)
+    trn, tst = splitdata(gene_sequences, gene_sequences.Class; trainprop=0.8)
 
     gen_trn = AutoML.csv2data(trn)
     gen_tst = AutoML.csv2data(tst)
