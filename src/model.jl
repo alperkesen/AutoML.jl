@@ -159,13 +159,19 @@ end
 
 function build(m::Model, inputsize, outputsize)
     chain = iscategorical(m) ? CategoricalChain : LinearChain
-    hiddensize = 512
+    hs, hs2, hs3 = 512, 200, 50
+    pdrop = 0.2
 
-    layer = LinearLayer(inputsize, hiddensize, 0.01, relu; pdrop=0)
-    layer2 = LinearLayer(hiddensize, outputsize, 0.01, identity; pdrop=0)
-    layer3 = LinearLayer(inputsize, outputsize, 0.01, identity; pdrop=0.5)
+    layer = LinearLayer(inputsize, hs, relu; pdrop=pdrop)
+    layer2 = LinearLayer(hs, outputsize, identity; pdrop=pdrop)
+    layer3 = LinearLayer(inputsize, outputsize, identity; pdrop=pdrop)
+    layer4 = LinearLayer(hs, hs2, relu; pdrop=pdrop)
+    layer5 = LinearLayer(hs2, hs3, relu; pdrop=pdrop)
+    layer6 = LinearLayer(hs2, outputsize, identity; pdrop=pdrop)
+
     m.model = chain(layer3)
     m.model = chain(layer, layer2)
+    m.model = chain(layer, layer4, layer6)
 end
 
 function train(m::Model, dtrn::Knet.Data; epochs=1, showprogress=true,
