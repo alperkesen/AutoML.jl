@@ -1,12 +1,14 @@
-using Knet: Knet, AutoGrad, adam, adam!, progress!, minibatch, save, relu,
-    gpu, KnetArray, load, sigm
+using Knet: Knet, AutoGrad, Data, adam, adam!, progress!, minibatch, save, relu,
+    gpu, KnetArray, load, sigm, goldensection
 using Statistics: mean
 using DataFrames
 using Plots
 
 PARAMS = Dict("batchsize" => 32,
-              "lensentence" => 20,
-              "vocsize" => 30000)
+              "pdrop" => 0.1,
+              "lr" => 0.01,
+              "hidden" => 100,
+              )
 
 
 mutable struct Model
@@ -14,19 +16,21 @@ mutable struct Model
     name::String
     model
     savepath::String
+    datapath::String
     vocabulary
     params
     extractor
 end
 
-Model(config::Config; name="model", savedir=SAVEDIR, voc=nothing,
-      params=PARAMS, extractor=Dict()) = Model(config, name, nothing, savedir,
-                                               voc, params, extractor)
+Model(config::Config; name="model", savedir=SAVEDIR, datadir=nothing,
+      voc=nothing, params=PARAMS, extractor=Dict()) = Model(
+          config, name, nothing, savedir, datapath, voc, params, extractor)
 Model(inputs::Array{Tuple{String, String},1},
       outputs::Array{Tuple{String, String},1};
-      name="model", savedir=SAVEDIR, voc=nothing, params=PARAMS,
+      name="model", savedir=SAVEDIR, datadir=nothing, voc=nothing, params=PARAMS,
       extractor=Dict()) = Model(Config(inputs, outputs), name=name,
-                                savedir=SAVEDIR, voc=voc, params=params,
+                                savedir=SAVEDIR, datadir=datadir,
+                                voc=voc, params=params,
                                 extractor=extractor)
 
 getfeatures(m::Model; ftype="all") = getfeatures(m.config; ftype=ftype)
@@ -117,7 +121,7 @@ function preprocess2(m::Model, data)
             resnet = m.extractor["resnet"]
             println("Resnet...")
 
-            preprocessed[fname] = [resnet(joinpath(DATADIR, "cifar_100", path))
+            preprocessed[fname] = [resnet(joinpath(m.datapath, path))
                                    for path in data[fname]]
         elseif ftype == TEXT
             bert = m.extractor["bert"]
@@ -157,31 +161,67 @@ function preparedata(m::Model, traindata; output=true)
     return xtrn
 end
 
-function build(m::Model, inputsize, outputsize)
+function build(m::Model, dtrn::Data)
     chain = iscategorical(m) ? CategoricalChain : LinearChain
-    hs, hs2, hs3 = 512, 200, 50
-    pdrop = 0.2
-
-    layer = LinearLayer(inputsize, hs, relu; pdrop=pdrop)
-    layer2 = LinearLayer(hs, outputsize, identity; pdrop=pdrop)
-    layer3 = LinearLayer(inputsize, outputsize, identity; pdrop=pdrop)
-    layer4 = LinearLayer(hs, hs2, relu; pdrop=pdrop)
-    layer5 = LinearLayer(hs2, hs3, relu; pdrop=pdrop)
-    layer6 = LinearLayer(hs2, outputsize, identity; pdrop=pdrop)
-
-    m.model = chain(layer3)
-    m.model = chain(layer, layer2)
-    m.model = chain(layer, layer4, layer6)
-end
-
-function train(m::Model, dtrn::Knet.Data; epochs=1, showprogress=true,
-               savemodel=false)
     inputsize = size(dtrn.x, 1)
     outputsize = iscategorical(m) ? length(unique(dtrn.y)) : size(dtrn.y, 1)
-    build(m, inputsize, outputsize)
 
-    showprogress ? progress!(adam(m.model, repeat(dtrn, epochs))) :
-        adam(m.model, repeat(dtrn, epochs))
+    hidden = m.params["hidden"]
+    pdrop = m.params["pdrop"]
+
+    layer = LinearLayer(inputsize, hidden, relu; pdrop=pdrop)
+    layer2 = LinearLayer(hidden, outputsize, identity; pdrop=pdrop)
+
+    m.model = chain(layer, layer2)
+end
+
+function hyperoptimization(m::Model, dtrn::Data)
+    neval = 0
+
+    function f(x)
+        neval += 1
+        lr, hidden, pdrop, batchsize = xform(x)
+
+        if hidden < 10000
+            m.params["lr"] = lr
+            m.params["hidden"] = hidden
+            m.params["pdrop"] = pdrop
+            m.params["batchsize"] = batchsize
+            build(m, dtrn)
+            partialtrain(m, dtrn)
+            loss = sum([m.model(x, y) for (x, y) in dtrn])
+        else
+            loss = NaN
+        end
+
+        println("Loss: $loss")
+
+        return loss
+    end
+
+    function xform(x)
+        lr, hidden, pdrop, batchsize = exp.(x) .* [0.01, 100.0, 0.1, 32]
+        hidden = ceil(Int, hidden)
+        batchsize = ceil(Int, batchsize)
+        (lr, hidden, pdrop, batchsize)
+    end
+
+    (f0, x0) = goldensection(f, 4)
+    lr, hidden, pdrop, batchsize = xform(x0)
+
+    m.params["lr"] = lr
+    m.params["hidden"] = ceil(Int, hidden)
+    m.params["pdrop"] = pdrop
+    m.params["batchsize"] = ceil(Int, batchsize)
+end
+
+function train(m::Model, dtrn::Data; epochs=1, showprogress=true,
+               savemodel=false)
+    build(m, dtrn)
+    dtrn = minibatch(dtrn.x, dtrn.y, m.params["batchsize"]; shuffle=true)
+
+    showprogress ? progress!(adam(m.model, repeat(dtrn, epochs); lr=m.params["lr"])) :
+        adam!(m.model, repeat(dtrn, epochs); lr=m.params["lr"])
 
     savemodel && savemodel(m)
     m, dtrn
@@ -194,17 +234,24 @@ function train(m::Model, traindata::Dict{String, Array{T,1} where T};
 end
 
 function train(m::Model, trainpath::String; args...)
+    m.datapath = trainpath
     traindata = csv2data(trainpath)
     train(m, traindata; args...)
 end
 
 function partialtrain(m::Model, trainpath::String)
+    m.datapath = trainpath
     traindata = csv2data(trainpath)
-    train(m, traindata; epochs=1)
+    partialtrain(m, traindata)
 end
 
 function partialtrain(m::Model, traindata::Dict{String, Array{T,1} where T})
-    train(m, traindata; epochs=1)
+    dtrn = getbatches(m, traindata; batchsize=m.params["batchsize"])
+    partialtrain(m, traindatao)
+end
+
+function partialtrain(m::Model, dtrn::Data)
+    train(m, dtrn; epochs=1)
 end
 
 function predictdata(m::Model, example)
