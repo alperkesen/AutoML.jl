@@ -22,12 +22,12 @@ mutable struct Model
     extractor
 end
 
-Model(config::Config; name="model", savedir=SAVEDIR, datadir=nothing,
+Model(config::Config; name="model", savedir=SAVEDIR, datadir="",
       voc=nothing, params=PARAMS, extractor=Dict()) = Model(
-          config, name, nothing, savedir, datapath, voc, params, extractor)
+          config, name, nothing, savedir, datadir, voc, params, extractor)
 Model(inputs::Array{Tuple{String, String},1},
       outputs::Array{Tuple{String, String},1};
-      name="model", savedir=SAVEDIR, datadir=nothing, voc=nothing, params=PARAMS,
+      name="model", savedir=SAVEDIR, datadir="", voc=nothing, params=PARAMS,
       extractor=Dict()) = Model(Config(inputs, outputs), name=name,
                                 savedir=SAVEDIR, datadir=datadir,
                                 voc=voc, params=params,
@@ -175,26 +175,25 @@ function build(m::Model, dtrn::Data)
     m.model = chain(layer, layer2)
 end
 
-function hyperoptimization(m::Model, dtrn::Data)
+function hyperoptimization(m::Model, dtrn::Data; showloss=true)
     neval = 0
 
     function f(x)
         neval += 1
         lr, hidden, pdrop, batchsize = xform(x)
 
-        if hidden < 10000
+        if hidden < 10000 && 0 <= pdrop <= 1 && 0 < batchsize < 512
             m.params["lr"] = lr
             m.params["hidden"] = hidden
             m.params["pdrop"] = pdrop
             m.params["batchsize"] = batchsize
-            build(m, dtrn)
-            partialtrain(m, dtrn)
-            loss = sum([m.model(x, y) for (x, y) in dtrn])
+            train(m, dtrn; showprogress=false, epochs=1, savemodel=false)
+            loss = sum([m.model(x,y) for (x, y) in dtrn])
         else
             loss = NaN
         end
 
-        println("Loss: $loss")
+        showloss && println("Loss: $loss")
 
         return loss
     end
@@ -216,7 +215,8 @@ function hyperoptimization(m::Model, dtrn::Data)
 end
 
 function train(m::Model, dtrn::Data; epochs=1, showprogress=true,
-               savemodel=false)
+               savemodel=false, optimize=false)
+    optimize && hyperoptimization(m, dtrn)
     build(m, dtrn)
     dtrn = minibatch(dtrn.x, dtrn.y, m.params["batchsize"]; shuffle=true)
 
@@ -262,10 +262,9 @@ function predictdata(m::Model, example)
     iscategorical(m) ? predict(m.model, x) : m.model(x)
 end
 
-function crossvalidate(m::Model, x, y; k=5, epochs=1)
-    atype = gpu() >= 0 ? KnetArray{Float64} : Array{Float64}
-    xfolds, yfolds = kfolds(x, k), kfolds(y, k)
-    trainacc, testacc = zeros(2)
+function crossvalidate(m::Model, dtrn::Data; k=5, epochs=1, showprogress=false)
+    xfolds, yfolds = kfolds(dtrn.x, k), kfolds(dtrn.y, k)
+    trainloss, testloss = zeros(2)
 
     for i=1:k
         foldxtrn = hcat([xfolds[j] for j=1:k if j != i]...)
@@ -274,30 +273,25 @@ function crossvalidate(m::Model, x, y; k=5, epochs=1)
         foldxtst = xfolds[i]
         foldytst = yfolds[i]
 
-        foldxtrn = atype(foldxtrn)
-        foldxtst = atype(foldxtst)
- 
-        dtrn = minibatch(foldxtrn, foldytrn, m.params["batchsize"];
-                         shuffle=true)
-        dtst = minibatch(foldxtst, foldytst, m.params["batchsize"];
-                         shuffle=true)
+        dftrn = minibatch(foldxtrn, foldytrn, m.params["batchsize"];
+                          shuffle=true)
+        dftst = minibatch(foldxtst, foldytst, m.params["batchsize"];
+                          shuffle=true)
 
-        progress!(adam(m.model, repeat(dtrn, epochs)))
+        showprogress ? progress!(adam(m.model, repeat(dftrn, epochs))) :
+            adam!(m.model, repeat(dftrn, epochs))
 
-        trainacc += accuracy(m.model, dtrn)
-        testacc += accuracy(m.model, dtst)
+        trainloss += sum([m.model(x, y) for (x, y) in dftrn])
+        testloss += sum([m.model(x, y) for (x, y) in dftst])
     end
 
-    trainacc /= k
-    testacc /= k
+    trainloss /= k
+    testloss /= k
 
-    println("Train acc:")
-    println(trainacc)
+    showprogress && println("Train loss: $trainloss")
+    showprogress && println("Test loss: $testloss")
 
-    println("Test acc:")
-    println(testacc)
-
-    return m
+    return testloss
 end
 
 function getbatches(m::Model, traindata::Dict{String, Array{T,1} where T};
