@@ -7,42 +7,6 @@ STOPWORDS = ["this", "is", "a", "an", "the",
              '.', '?', '!', ';']
 
 
-function house_rentals()
-    df = CSV.read(joinpath(DATADIR, "home_rentals", "home_rentals.csv"))
-end
-
-function splice_junction()
-    df = CSV.read(joinpath(DATADIR, "splice_junction_gene_sequences",
-                           "splice_junction_gene_sequences.csv"))
-end
-
-function cifar100()
-    trn = CSV.read(joinpath(DATADIR, "cifar_100", "train.csv"))
-    tst = CSV.read(joinpath(DATADIR, "cifar_100", "test.csv"))
-    trn, tst
-end
-
-function imdb_movie_review()
-    trn = CSV.read(joinpath(DATADIR, "imdb_movie_review", "train.tsv"))
-    tst = CSV.read(joinpath(DATADIR, "imdb_movie_review", "test.tsv"))
-    trn, tst
-end
-
-function quora_questions()
-    trn = CSV.read(joinpath(DATADIR, "quora_questions", "train.csv"))
-    trn = dropmissing(trn)
-
-    tst = CSV.read(joinpath(DATADIR, "quora_questions", "test.csv"))
-    tst = dropmissing(tst)
-    trn, tst
-end
-
-function default_of_credit()
-    trn = CSV.read(joinpath(DATADIR, "default_of_credit", "train.csv"))
-    tst = CSV.read(joinpath(DATADIR, "default_of_credit", "test.csv"))
-    trn, tst
-end
-
 function slicematrix(A::AbstractMatrix{T}) where T
     m, n = size(A)
     B = Vector{T}[Vector{T}(undef, n) for _ in 1:m]

@@ -6,6 +6,7 @@ const DATADIR = abspath(joinpath(DIR, "..", "data"))
 
 include("config.jl")
 include("layers.jl")
+include("data.jl")
 include("utils.jl")
 include("build.jl")
 include("model.jl")
