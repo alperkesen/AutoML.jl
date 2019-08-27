@@ -17,6 +17,9 @@ const QUORATEST = joinpath(DATADIR, "quora_questions", "test.csv")
 const DOCTRAIN = joinpath(DATADIR, "default_of_credit", "train.csv")
 const DOCTEST = joinpath(DATADIR, "default_of_credit", "test.csv")
 
+const PORTRAIN = joinpath(DATADIR, "prediction_of_return", "train.txt")
+const PORTEST = joinpath(DATADIR, "prediction_of_return", "test.txt")
+
 
 function house_rentals()
     df = CSV.read(HOMERENTALS)
@@ -50,3 +53,8 @@ function default_of_credit()
     trn, tst
 end
 
+function prediction_of_return()
+    trn = readtext(PORTRAIN)
+    tst = readtext(PORTEST)
+    trn, tst
+end

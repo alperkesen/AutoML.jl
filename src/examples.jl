@@ -148,3 +148,34 @@ function train_default_of_credit(; epochs=1)
 
     model, dtrn, dtst
 end
+
+function train_prediction_of_return(; epochs=1)
+    portrn, portst = AutoML.prediction_of_return()
+
+    porinputs = [("customerID", AutoML.CATEGORY),
+                 ("creationDate", AutoML.DATE),
+                 ("manufacturerID", AutoML.CATEGORY),
+                 ("price", AutoML.FLOAT),
+                 ("deliveryDate", AutoML.DATE),
+                 ("salutation", AutoML.CATEGORY),
+                 ("dateOfBirth", AutoML.DATE),
+                 ("state", AutoML.CATEGORY),
+                 ("itemID", AutoML.CATEGORY),
+                 ("orderDate", AutoML.DATE),
+                 ("size", AutoML.CATEGORY),
+                 ("color", AutoML.CATEGORY),
+                 ("orderItemID", AutoML.CATEGORY)]
+    poroutputs = [("returnShipment", AutoML.BINARYCATEGORY)]
+
+    model = AutoML.Model(porinputs, poroutputs; name="predictofreturn")
+    model, dtrn = AutoML.train(model, portrn; epochs=epochs)
+    dtst = AutoML.getbatches(model, portst)
+
+    println("Train accuracy:")
+    println(accuracy(model.model, dtrn))
+
+    println("Test accuracy:")
+    println(accuracy(model.model, dtst))
+
+    model, dtrn, dtst
+end
