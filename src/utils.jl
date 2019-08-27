@@ -31,6 +31,17 @@ function image3d(image)
                                            length(image[1])))
 end
 
+function readtext(filename, dlm=",")
+    data = split.(readlines(filename), dlm)
+    features = data[1]
+    rows = data[2:end]
+    numfeatures = length(features)
+
+    fdict = Dict{String, Array{T,1} where T}(
+        String(features[i]) => [String.(row[i]) for row in rows]
+        for i in 1:numfeatures)
+end
+
 function tokenize(text)
     punctuations = ['.', '?', '!', ';', '(', ')']
     text = replace(text, "<br />" => "")
