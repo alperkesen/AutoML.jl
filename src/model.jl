@@ -3,11 +3,13 @@ using Knet: Knet, AutoGrad, Data, adam, adam!, progress!, minibatch, save, relu,
 using Statistics: mean
 using DataFrames
 using Plots
+using Dates
 
 PARAMS = Dict("batchsize" => 32,
               "pdrop" => 0.1,
               "lr" => 0.01,
               "hidden" => 100,
+              "optimizer" => adam!
               )
 
 
@@ -20,18 +22,20 @@ mutable struct Model
     vocabulary
     params
     extractor
+    fdict
 end
 
 Model(config::Config; name="model", savedir=SAVEDIR, datadir="",
-      voc=nothing, params=PARAMS, extractor=Dict()) = Model(
-          config, name, nothing, savedir, datadir, voc, params, extractor)
+      voc=nothing, params=PARAMS, extractor=Dict(), fdict=Dict()) = Model(
+          config, name, nothing, savedir, datadir, voc, params, extractor,
+          fdict)
 Model(inputs::Array{Tuple{String, String},1},
       outputs::Array{Tuple{String, String},1};
       name="model", savedir=SAVEDIR, datadir="", voc=nothing, params=PARAMS,
-      extractor=Dict()) = Model(Config(inputs, outputs), name=name,
+      extractor=Dict(), fdict=Dict()) = Model(Config(inputs, outputs), name=name,
                                 savedir=SAVEDIR, datadir=datadir,
                                 voc=voc, params=params,
-                                extractor=extractor)
+                                extractor=extractor, fdict=fdict)
 
 getfeatures(m::Model; ftype="all") = getfeatures(m.config; ftype=ftype)
 getfnames(m::Model; ftype="all") = getfnames(m.config; ftype=ftype)
@@ -68,76 +72,24 @@ function loadmodel(loadpath::String)
 end
 
 function preprocess(m::Model, data)
-    preprocessed = Dict()
-    featurelist = getfeatures(m; ftype="all")
-    commonfeatures = [(fname, ftype) for (fname, ftype) in featurelist
-                      if in(fname, keys(data))]
-    for (fname, ftype) in commonfeatures
-        if ftype == STRING
-            preprocessed[fname] = doc2ids(data[fname])
-        elseif ftype == INT
-            preprocessed[fname] = Int.(data[fname])
-        elseif ftype == FLOAT
-            if eltype(data[fname]) == String
-                preprocessed[fname] = map(x->parse(Float64, x), data[fname])
-            elseif eltype(data[fname]) == Int
-                preprocessed[fname] = Float64.(data[fname])
-            else
-                preprocessed[fname] = data[fname]
-            end
-        elseif ftype == BINARYCATEGORY
-            if eltype(data[fname]) != Int
-                preprocessed[fname] = map(x->parse(Int64, x), data[fname]) .+ 1
-            else
-                preprocessed[fname] = data[fname] .+ 1
-            end
-        elseif ftype == CATEGORY
-            preprocessed[fname] = doc2ids(data[fname])
-        else
-            preprocessed[fname] = data[fname]
-        end
-    end
+    preprocessed = copy(data)
+
+    process_string(m, preprocessed)
+    process_int(m, preprocessed)
+    process_float(m, preprocessed)
+    process_bin_category(m, preprocessed)
+    process_category(m, preprocessed)
+    process_date(m, preprocessed)
+
     preprocessed
 end
 
 function preprocess2(m::Model, data)
-    preprocessed = Dict()
-    featurelist = getfeatures(m; ftype="all")
-    commonfeatures = [(fname, ftype) for (fname, ftype) in featurelist
-                      if in(fname, keys(data))]
+    preprocessed = copy(data)
 
-    if istextmodel(m) && !haskey(m.extractor, "bert")
-        m.extractor["bert"] = PretrainedBert()
-        vocpath = joinpath(DATADIR, "bert", "bert-base-uncased-vocab.txt")
-        m.vocabulary = initializevocab(vocpath)
-    end
+    istextmodel(m) && process_text(m, preprocessed)
+    isimagemodel(m) && process_image(m, preprocessed)
 
-    if isimagemodel(m) && !haskey(m.extractor, "resnet")
-        m.extractor["resnet"] = ResNet()
-    end
-
-    for (fname, ftype) in commonfeatures
-        if ftype == IMAGE
-            resnet = m.extractor["resnet"]
-            println("Resnet...")
-
-            preprocessed[fname] = [resnet(joinpath(m.datapath, path))
-                                   for path in data[fname]]
-        elseif ftype == TEXT
-            bert = m.extractor["bert"]
-            docs = read_and_process(data[fname], m.vocabulary)
-            inputids, masks, segmentids = preprocessbert(docs)
-
-            println("Bert...")
-            preprocessed[fname] = [mean(bert.bert(
-                inputids[k],
-                segmentids[k];
-                attention_mask=masks[k])[:, :, end], dims=2)
-                       for k in 1:length(inputids)]
-        else
-            preprocessed[fname] = data[fname]
-        end
-    end
     preprocessed
 end
 
@@ -234,13 +186,13 @@ function train(m::Model, traindata::Dict{String, Array{T,1} where T};
 end
 
 function train(m::Model, trainpath::String; args...)
-    m.datapath = trainpath
+    m.datapath = dirname(trainpath)
     traindata = csv2data(trainpath)
     train(m, traindata; args...)
 end
 
 function partialtrain(m::Model, trainpath::String)
-    m.datapath = trainpath
+    m.datapath = dirname(trainpath)
     traindata = csv2data(trainpath)
     partialtrain(m, traindata)
 end
