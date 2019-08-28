@@ -58,9 +58,9 @@ function skipwords(x; stopwords=STOPWORDS)
                for doc in x]
 end
 
-function doc2ids(data::Array{String,1})
-    dict = Dict{String, Int}()
-    pid = 1
+function doc2ids(data::Array{String,1}; dict=nothing)
+    dict = dict == nothing ? Dict{String, Int}() : dict
+    pid = length(dict) + 1
     
     for x in data
         if !haskey(dict, x)
@@ -69,6 +69,7 @@ function doc2ids(data::Array{String,1})
         end
     end
     ids = [dict[x] for x in data]
+    return ids, dict
 end
 
 function frequencies(x)
