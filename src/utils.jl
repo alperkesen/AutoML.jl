@@ -198,3 +198,16 @@ function kfolds(x, k::Int)
     s = n / k
     folds = [x[:, round(Int64, (i-1)*s)+1:min(n,round(Int64, i*s))] for i=1:k]
 end
+
+function onehot(i, dims)
+    v = zeros(dims)
+    v[i] = 1
+
+    return v
+end
+
+function onehotencode(data)
+    dims = length(unique(data))
+    ids = doc2ids(data)
+    vectors = [onehot(i,  dims) for i in ids]
+end
