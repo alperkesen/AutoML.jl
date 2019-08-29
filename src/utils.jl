@@ -149,14 +149,14 @@ function csv2data(csvpath::String)
     df = CSV.read(csvpath)
     df = cleandata(df)
     fnames = names(df)
-    data = Dict{String, Array{T,1} where T}(String(fname) => Array(df[fname])
-                for fname in fnames)
+    data = Dict{String, Array{T,1} where T}(String(fname) => Array(replace(
+        df[!, fname], missing => "?")) for fname in fnames)
 end
 
 function csv2data(df::DataFrames.DataFrame)
     fnames = names(df)
-    data = Dict{String, Array{T,1} where T}(String(fname) => Array(df[fname])
-                for fname in fnames)
+    data = Dict{String, Array{T,1} where T}(String(fname) => Array(replace(
+        df[!, fname], missing => "?")) for fname in fnames)
 end
 
 function cleandata(df::DataFrames.DataFrame)
@@ -190,6 +190,47 @@ function splitdata(df::DataFrames.DataFrame, outputcolumn=nothing; trainprop=0.8
         end
         trn = vcat(trainframes...)
         tst = vcat(testframes...)
+    end
+    trn, tst
+end
+
+function splitdata(data::Dict{String, Array{T, 1} where T},
+                   outputcolumn=nothing; trainprop=0.8)
+    categorical = outputcolumn != nothing
+
+    if !categorical
+        examplesize = length(iterate(values(data))[1])
+        trainsize = Int(round(examplesize * trainprop))
+
+        trnindices = sample(1:examplesize, trainsize, replace=false)
+        tstindices = [i for i=1:examplesize if !in(i, trnindices)]
+
+        trn = Dict(fname => value[trnindices] for (fname, value) in data)
+        tst = Dict(fname => value[tstindices] for (fname, value) in data)
+    else
+        classes = unique(outputcolumn)
+        examplesize = length(iterate(values(data))[1])
+        classindices = [[i for i=1:examplesize if outputcolumn[i] == c]
+                        for c in classes]
+        train, test = [], []
+
+        for indices in classindices
+            examplesize = length(indices)
+            trainsize = Int(round(examplesize * trainprop))
+
+            trnindices = sample(indices, trainsize, replace=false)
+            tstindices = [x for x in indices if !in(x, trnindices)]
+
+            newtrn = Dict(fname => value[trnindices] for (fname, value) in data)
+            newtst = Dict(fname => value[tstindices] for (fname, value) in data)
+
+            push!(train, newtrn)
+            push!(test, newtst)
+        end
+        trn = Dict{String, Array{T, 1} where T}(fname => vcat(
+            [dict[fname] for dict in train]...) for fname in keys(data))
+        tst = Dict{String, Array{T, 1} where T}(fname => vcat(
+            [dict[fname] for dict in test]...) for fname in keys(data))
     end
     trn, tst
 end
