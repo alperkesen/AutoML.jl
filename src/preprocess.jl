@@ -3,6 +3,7 @@ function process_string(m::Model, data)
                 if in(fname, keys(data)) && ftype == STRING]
 
     for fname in features
+        data[fname] = fill_string(data[fname])
         data[fname] = string.(data[fname])
         dict = haskey(m.fdict, fname) ? m.fdict[fname] : nothing
         ids, dict = doc2ids(data[fname]; dict=dict)
@@ -16,8 +17,9 @@ function process_int(m::Model, data)
                 if in(fname, keys(data)) && ftype == INT]
 
     for fname in features
+        data[fname] = fill_int(data[fname])
         if eltype(data[fname]) != Int
-            data[fname] = Int.(data[fname])
+            data[fname] = map(x->parse(Int64, x), data[fname])
         end
     end
 end
@@ -42,6 +44,7 @@ function process_bin_category(m::Model, data)
                 if in(fname, keys(data)) && ftype == BINARYCATEGORY]
 
     for fname in features
+        data[fname] = fill_bin_category(data[fname])
         data[fname] = string.(data[fname])
         dict = haskey(m.fdict, fname) ? m.fdict[fname] : nothing
         ids, dict = doc2ids(data[fname]; dict=dict)
@@ -55,6 +58,7 @@ function process_category(m::Model, data)
                 if in(fname, keys(data)) && ftype == CATEGORY]
 
     for fname in features
+        data[fname] = fill_category(data[fname])
         data[fname] = string.(data[fname])
         dict = haskey(m.fdict, fname) ? m.fdict[fname] : nothing
         ids, dict = doc2ids(data[fname]; dict=dict)
@@ -68,11 +72,12 @@ function process_date(m::Model, data)
                 if in(fname, keys(data)) && ftype == DATE]
 
     for fname in features
-        dates = [Date(date) for date in data[fname] if date != "?"]
-        data[fname] = [[Dates.year(date) / 3000.0,
-                        Dates.month(date) / 12.0,
-                        Dates.day(date) / 31.0,
-                        Dates.dayofweek(date) / 7.0] for date in dates]
+        data[fname] = fill_date(data[fname])
+        dates = [Date(date) for date in data[fname]]
+        data[fname] = [[Dates.year(date),
+                        Dates.month(date),
+                        Dates.day(date),
+                        Dates.dayofweek(date)] for date in dates]
     end
 end
 
