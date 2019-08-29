@@ -18,9 +18,6 @@ function process_int(m::Model, data)
 
     for fname in features
         data[fname] = fill_int(data[fname])
-        if eltype(data[fname]) != Int
-            data[fname] = map(x->parse(Int64, x), data[fname])
-        end
     end
 end
 
@@ -81,6 +78,22 @@ function process_date(m::Model, data)
     end
 end
 
+function process_timestamp(m::Model, data)
+    features = [fname for (fname, ftype) in getfeatures(m; ftype="all")
+                if in(fname, keys(data)) && ftype == TIMESTAMP]
+
+    for fname in features
+        data[fname] = fill_timestamp(data[fname])
+        timestamps = [DateTime(ts) for ts in data[fname]]
+        data[fname] = [[Dates.year(ts),
+                        Dates.month(ts),
+                        Dates.day(ts),
+                        Dates.hour(ts),
+                        Dates.minute(ts),
+                        Dates.second(ts)] for ts in timestamps]
+    end
+end
+
 function process_text(m::Model, data)
     features = [fname for (fname, ftype) in getfeatures(m; ftype="all")
                 if in(fname, keys(data)) && ftype == TEXT]
@@ -96,6 +109,7 @@ function process_text(m::Model, data)
     println("Bert...")
 
     for fname in features
+        data[fname] = fill_text(data[fname])
         docs = read_and_process(data[fname], m.vocabulary)
         inputids, masks, segmentids = preprocessbert(docs)
         
