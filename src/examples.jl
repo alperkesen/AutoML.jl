@@ -152,24 +152,50 @@ end
 function train_prediction_of_return(; epochs=1)
     portrn, portst = AutoML.prediction_of_return()
 
-    porinputs = [("customerID", AutoML.CATEGORY),
+    porinputs = [("customerID", AutoML.INT),
                  ("creationDate", AutoML.DATE),
-                 ("manufacturerID", AutoML.CATEGORY),
+                 ("manufacturerID", AutoML.INT),
                  ("price", AutoML.FLOAT),
                  ("deliveryDate", AutoML.DATE),
                  ("salutation", AutoML.CATEGORY),
                  ("dateOfBirth", AutoML.DATE),
                  ("state", AutoML.CATEGORY),
-                 ("itemID", AutoML.CATEGORY),
+                 ("itemID", AutoML.INT),
                  ("orderDate", AutoML.DATE),
                  ("size", AutoML.CATEGORY),
                  ("color", AutoML.CATEGORY),
-                 ("orderItemID", AutoML.CATEGORY)]
+                 ("orderItemID", AutoML.INT)]
     poroutputs = [("returnShipment", AutoML.BINARYCATEGORY)]
 
     model = AutoML.Model(porinputs, poroutputs; name="predictofreturn")
     model, dtrn = AutoML.train(model, portrn; epochs=epochs)
     dtst = AutoML.getbatches(model, portst)
+
+    println("Train accuracy:")
+    println(accuracy(model.model, dtrn))
+
+    println("Test accuracy:")
+    println(accuracy(model.model, dtst))
+
+    model, dtrn, dtst
+end
+
+function train_sensor(; epochs=1)
+    sd = AutoML.sensor()
+    trn, tst = splitdata(sd; trainprop=0.8)
+
+    sdtrn = AutoML.csv2data(trn)
+    sdtst = AutoML.csv2data(tst)
+
+    sdinputs = [("sensor 1", AutoML.INT),
+                ("sensor 2", AutoML.INT),
+                ("sensor 3", AutoML.INT),
+                ("sensor4", AutoML.INT)]
+    sdoutputs = [("output", AutoML.CATEGORY)]
+
+    model = AutoML.Model(sdinputs, sdoutputs; name="sensordata")
+    model, dtrn = AutoML.train(model, sdtrn; epochs=epochs)
+    dtst = AutoML.getbatches(model, sdtst)
 
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))

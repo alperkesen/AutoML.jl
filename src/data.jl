@@ -20,6 +20,8 @@ const DOCTEST = joinpath(DATADIR, "default_of_credit", "test.csv")
 const PORTRAIN = joinpath(DATADIR, "prediction_of_return", "train.txt")
 const PORTEST = joinpath(DATADIR, "prediction_of_return", "test.txt")
 
+const SENSOR = joinpath(DATADIR, "sensor_data", "sensor_data.csv")
+
 
 function house_rentals()
     df = CSV.read(HOMERENTALS)
@@ -57,4 +59,8 @@ function prediction_of_return()
     trn = readtext(PORTRAIN)
     tst = readtext(PORTEST)
     trn, tst
+end
+
+function sensor()
+    df = CSV.read(SENSOR)
 end
