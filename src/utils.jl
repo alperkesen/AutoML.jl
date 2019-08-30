@@ -253,3 +253,8 @@ function onehotencode(data)
     ids = doc2ids(data)
     vectors = [onehot(i,  dims) for i in ids]
 end
+
+function frequentvalue(array)
+    counts = [(count(x->x==i, array), i) for i in unique(array)]
+    mostfrequent = maximum(counts)[2]
+end
