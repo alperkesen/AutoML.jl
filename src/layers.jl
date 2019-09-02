@@ -31,9 +31,9 @@ end
 
 struct Conv; w; b; f; pdrop; end
 
-Conv(w1::Int, w2::Int, cx::Int, cy::Int, f=relu; pdrop=0, scale=0.01,
+Conv(w1::Int, w2::Int, cx::Int, cy::Int, f=relu; pdrop=0,
      atype=gpu()>=0 ? KnetArray{Float64} : Array{Float64}) =
-         Conv(Param(atype(randn(w1, w2, cx, cy) * scale)),
+         Conv(Param(atype(xavier(w1, w2, cx, cy))),
               Param(atype(zeros(1, 1, cy, 1))),
               f,
               pdrop)
