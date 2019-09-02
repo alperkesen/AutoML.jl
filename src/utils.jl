@@ -235,6 +235,61 @@ function splitdata(data::Dict{String, Array{T, 1} where T},
     trn, tst
 end
 
+function splitdata(d::Data; trainprop=0.8)
+    categorical = eltype(d.y) == Int
+
+    if !categorical
+        examplesize = size(d.x, 2)
+        trainsize = Int(round(examplesize * trainprop))
+
+        trnindices = sample(1:examplesize, trainsize, replace=false)
+        tstindices = [i for i in 1:examplesize if !in(i, trnindices)]
+
+        xtrn = dtrn.x[:, trnindices]
+        ytrn = dtrn.y[:, trnindices]
+        dtrn = minibatch(xtrn, ytrn, d.batchsize; shuffle=true)
+
+        xtst = dtst.x[:, tstindices]
+        ytst = dtst.y[:, tstindices]
+        dtst = minibatch(xtst, ytst, d.batchsize; shuffle=true)
+
+        return dtrn, dtst
+    else
+        examplesize = size(d.x, 2)
+        classes = unique(d.y)
+        classindices = [[i for i=1:examplesize if d.y[i] == c]
+                        for c in classes]
+        train, test = [], []
+
+        for indices in classindices
+            examplesize = length(indices)
+            trainsize = Int(round(examplesize * trainprop))
+
+            trnindices = sample(indices, trainsize, replace=false)
+            tstindices = [i for i in indices if !in(i, trnindices)]
+
+            xtrn = d.x[:, trnindices]
+            ytrn = d.y[:, trnindices]
+
+            xtst = d.x[:, tstindices]
+            ytst = d.y[:, tstindices]
+
+            push!(train, (xtrn, ytrn))
+            push!(test, (xtst, ytst))
+        end
+
+        xtrn = hcat([x[1] for x in train]...)
+        ytrn = hcat([x[2] for x in train]...)
+        dtrn = minibatch(xtrn, ytrn, d.batchsize; shuffle=true)
+
+        xtst = hcat([x[1] for x in test]...)
+        ytst = hcat([x[2] for x in test]...)
+        dtst = minibatch(xtst, ytst, d.batchsize; shuffle=true)
+
+        return dtrn, dtst
+    end
+end
+
 function kfolds(x, k::Int)
     n = size(x, 2)
     s = n / k
