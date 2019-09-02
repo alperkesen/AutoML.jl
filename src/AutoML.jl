@@ -1,6 +1,7 @@
 module AutoML
 
 export
+    Knet,
     Model,
     Config,
     savemodel,

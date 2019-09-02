@@ -54,24 +54,22 @@ function train_gene_sequences(; epochs=1)
     return model, dtrn, dtst
 end
 
-function train_cifar_100(; smallset=true, epochs=1)
-    trn, tst = AutoML.cifar100()
-    
-    if smallset
-        selected = Random.shuffle(Random.seed!(0), Vector(1:10000))[1024:1600]
-        trn = trn[selected, :]
-        tst = tst[selected, :]
-    end
-
-    cifartrn = AutoML.csv2data(trn)
-    cifartst = AutoML.csv2data(tst)
-
+function train_cifar_100(; epochs=1, datapath=nothing)
     cifarinputs = [("image_path", "Image")]
     cifaroutputs = [("class", "Category")]
 
     model = AutoML.Model(cifarinputs, cifaroutputs; name="cifar100")
-    model, dtrn = AutoML.train(model, cifartrn; epochs=epochs)
-    dtst = AutoML.getbatches(model, cifartst)
+
+    if datapath == nothing
+        println("Preprocessing from scratch...")
+        model, dtrn = AutoML.train(model, AutoML.CIFAR100TRAIN; epochs=epochs)
+        dtst = AutoML.getbatches(model, AutoML.CIFAR100TEST)
+    else
+        datapath = joinpath(AutoML.SAVEDIR, datapath)
+        !isfile(datapath) ? throw("Datapath is invalid") : println("Loading data...")
+        dtrn, dtst = Knet.load(datapath, "dtrn", "dtst")
+        model, dtrn = AutoML.train(model, dtrn; epochs=epochs)
+    end
   
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
@@ -82,18 +80,22 @@ function train_cifar_100(; smallset=true, epochs=1)
     model, dtrn, dtst
 end
 
-function train_imdb(; epochs=1)
-    trn, tst = AutoML.imdb_movie_review()
-
-    imdbtrn = AutoML.csv2data(trn)
-    imdbtst = AutoML.csv2data(tst)
-
+function train_imdb(; epochs=1, datapath=nothing)
     imdbinputs = [("review", "Text")]
     imdboutputs = [("sentiment", "Category")]
 
     model = AutoML.Model(imdbinputs, imdboutputs; name="imdbreviews")
-    model, dtrn = AutoML.train(model, imdbtrn; epochs=epochs)
-    dtst = AutoML.getbatches(model, imdbtst)
+
+    if datapath == nothing
+        println("Preprocessing from scratch...")
+        model, dtrn = AutoML.train(model, AutoML.IMDBTRAIN; epochs=epochs)
+        dtst = AutoML.getbatches(model, AutoML.IMDBTEST)
+    else
+        datapath = joinpath(AutoML.SAVEDIR, datapath)
+        !isfile(datapath) ? throw("Datapath is invalid") : println("Loading data...")
+        dtrn, dtst = Knet.load(datapath, "dtrn", "dtst")
+        model, dtrn = AutoML.train(model, dtrn; epochs=epochs)
+    end
 
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
