@@ -2,6 +2,7 @@ using CSV
 using DataFrames
 using Images: load
 using StatsBase: sample
+using Knet: Data
 
 STOPWORDS = ["this", "is", "a", "an", "the",
              '.', '?', '!', ';']
