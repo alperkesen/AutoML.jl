@@ -98,7 +98,6 @@ function preparedata(m::Model, traindata; output=true)
     trn = preprocess2(m, traindata)
 
     xtrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="input"))
-
     xtrn = vcat([atype(hcat(value...)) for (fname, value) in xtrn]...)
 
     if output
@@ -127,7 +126,7 @@ function build(m::Model, dtrn::Data)
     m.model = chain(layer, layer2)
 end
 
-function hyperoptimization(m::Model, dtrn::Data; showloss=true)
+function hyperoptimization(m::Model, dtrn::Data; showloss=true, cv=false)
     neval = 0
 
     function f(x)
@@ -139,8 +138,14 @@ function hyperoptimization(m::Model, dtrn::Data; showloss=true)
             m.params["hidden"] = hidden
             m.params["pdrop"] = pdrop
             m.params["batchsize"] = batchsize
-            train(m, dtrn; showprogress=false, epochs=1, savemodel=false)
-            loss = sum([m.model(x,y) for (x, y) in dtrn])
+
+            if cv
+                loss = crossvalidate(m, dtrn; showprogress=true)
+            else
+                dt, dv = splitdata(dtrn)
+                train(m, dt; showprogress=false, epochs=1, savemodel=false)
+                loss = sum([m.model(x,y) for (x,y) in dv])
+            end
         else
             loss = NaN
         end
@@ -215,7 +220,9 @@ function predictdata(m::Model, example)
 end
 
 function crossvalidate(m::Model, dtrn::Data; k=5, epochs=1, showprogress=false)
-    xfolds, yfolds = kfolds(dtrn.x, k), kfolds(dtrn.y, k)
+    indices = sample(1:size(dtrn.x, 2), size(dtrn.x, 2), replace=false)
+    dx, dy = dtrn.x[:, indices], dtrn.y[:, indices]
+    xfolds, yfolds = kfolds(dx, k), kfolds(dy, k)
     trainloss, testloss = zeros(2)
 
     for i=1:k
@@ -268,5 +275,10 @@ end
 
 function getbatches(m::Model, df::DataFrames.DataFrame; args...)
     traindata = csv2data(df)
+    getbatches(m, traindata; args...)
+end
+
+function getbatches(m::Model, trainpath::String; args...)
+    traindata = csv2data(trainpath)
     getbatches(m, traindata; args...)
 end
