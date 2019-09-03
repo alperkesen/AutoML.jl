@@ -109,7 +109,7 @@ function process_text(m::Model, data)
     println("Bert...")
 
     for fname in features
-        data[fname] = fill_text(data[fname])
+        data = fill_text(data, fname)
         docs = read_and_process(data[fname], m.vocabulary)
         inputids, masks, segmentids = preprocessbert(docs)
         
@@ -130,9 +130,10 @@ function process_image(m::Model, data)
     end
 
     resnet = m.extractor["resnet"]
-    println("Resnet...")
 
     for fname in features
+        data = fill_image(data, fname)
+        println("Resnet...")
         data[fname] = [resnet(joinpath(m.datapath, path)) for path in data[fname]]
     end
 end

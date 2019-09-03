@@ -96,9 +96,29 @@ function fill_timestamp(data, value=""; method="mostfrequent")
     end
 end
 
-function fill_text(data, value=""; method="constant")
-    if method == "constant"
-        data = replace(data, "?" => "")
+function fill_text(data, fname, value=""; method="constant")
+    ids = [i for i in 1:length(data[fname]) if data[fname][i] != "?"]
+
+    if method == "drop"
+        data = Dict(fname => value[ids] for (fname, value) in data)
+    elseif method == "constant"
+        data[fname] = replace(data[fname], "?" => "")
+
+        return data
+    else
+        throw("Undefined filling strategy")
+    end
+end
+
+function fill_image(data, fname, value=""; method="drop")
+    ids = [i for i in 1:length(data[fname]) if data[fname][i] != "?"]
+
+    if method == "drop"
+        data = Dict(fname => value[ids] for (fname, value) in data)
+    elseif method == "constant"
+        data[fname] = [x == "?" ? value : x for x in data[fname]]
+
+        return data
     else
         throw("Undefined filling strategy")
     end
