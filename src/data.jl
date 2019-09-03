@@ -21,6 +21,7 @@ const PORTRAIN = joinpath(DATADIR, "prediction_of_return", "train.txt")
 const PORTEST = joinpath(DATADIR, "prediction_of_return", "test.txt")
 
 const SENSOR = joinpath(DATADIR, "sensor_data", "sensor_data.csv")
+const SPAM = joinpath(DATADIR, "spam", "spam.csv")
 
 
 function house_rentals()
@@ -63,4 +64,8 @@ end
 
 function sensor()
     df = CSV.read(SENSOR)
+end
+
+function spam()
+    df = CSV.read(SPAM)
 end

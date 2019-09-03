@@ -207,3 +207,26 @@ function train_sensor(; epochs=1)
 
     model, dtrn, dtst
 end
+
+function train_spam(; epochs=1)
+    spam = AutoML.spam()
+    trn, tst = splitdata(spam; trainprop=0.8)
+
+    spamtrn = AutoML.csv2data(trn)
+    spamtst = AutoML.csv2data(tst)
+
+    spaminputs = [("v2", AutoML.TEXT)]
+    spamoutputs = [("v1", AutoML.BINARYCATEGORY)]
+
+    model = AutoML.Model(spaminputs, spamoutputs; name="spam")
+    model, dtrn = AutoML.train(model, spamtrn; epochs=epochs)
+    dtst = AutoML.getbatches(model, spamtst)
+
+    println("Train accuracy:")
+    println(accuracy(model.model, dtrn))
+
+    println("Test accuracy:")
+    println(accuracy(model.model, dtst))
+
+    model, dtrn, dtst
+end
