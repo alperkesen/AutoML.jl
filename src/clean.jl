@@ -81,7 +81,7 @@ function fill_date(data, value=""; method="mostfrequent")
     end
 end
 
-function fill_timestamp(data)
+function fill_timestamp(data, value=""; method="mostfrequent")
     timestamps = [DateTime(x) for x in data if x != "?"]
 
     if method == "sampling"
