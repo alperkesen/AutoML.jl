@@ -71,8 +71,11 @@ function loadmodel(loadpath::String)
     m
 end
 
-function preprocess(m::Model, data)
+function preprocess(m::Model, data::Dict{String, Array{T,1} where T})
     preprocessed = copy(data)
+    preprocessed = Dict{String, Array{T,1} where T}(
+        fname => value for (fname, value) in preprocessed
+        if in(fname, getfnames(m, ftype="all")))
 
     process_string(m, preprocessed)
     process_int(m, preprocessed)
@@ -84,7 +87,7 @@ function preprocess(m::Model, data)
     preprocessed
 end
 
-function preprocess2(m::Model, data)
+function preprocess2(m::Model, data::Dict{String, Array{T,1} where T})
     preprocessed = copy(data)
 
     istextmodel(m) && process_text(m, preprocessed)
