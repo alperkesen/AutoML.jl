@@ -246,12 +246,12 @@ function splitdata(d::Data; trainprop=0.8)
         trnindices = sample(1:examplesize, trainsize, replace=false)
         tstindices = [i for i in 1:examplesize if !in(i, trnindices)]
 
-        xtrn = dtrn.x[:, trnindices]
-        ytrn = dtrn.y[:, trnindices]
+        xtrn = d.x[:, trnindices]
+        ytrn = d.y[:, trnindices]
         dtrn = minibatch(xtrn, ytrn, d.batchsize; shuffle=true)
 
-        xtst = dtst.x[:, tstindices]
-        ytst = dtst.y[:, tstindices]
+        xtst = d.x[:, tstindices]
+        ytst = d.y[:, tstindices]
         dtst = minibatch(xtst, ytst, d.batchsize; shuffle=true)
 
         return dtrn, dtst
