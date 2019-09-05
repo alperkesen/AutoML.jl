@@ -123,3 +123,9 @@ function fill_image(data, fname, value=""; method="drop")
         throw("Undefined filling strategy")
     end
 end
+
+function remove_invalid(data, fname)
+    data[fname] = [isvalid(docs) ? docs : string(c for c in docs if isvalid(c))
+                   for docs in data[fname]]
+    data
+end

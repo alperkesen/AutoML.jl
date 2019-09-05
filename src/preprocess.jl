@@ -123,6 +123,7 @@ function process_text(m::Model, data)
 
     for fname in features
         data = fill_text(data, fname)
+        data = remove_invalid(data, fname)
         docs = read_and_process(data[fname], m.vocabulary)
         inputids, masks, segmentids = preprocessbert(docs)
         
