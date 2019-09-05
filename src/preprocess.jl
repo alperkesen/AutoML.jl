@@ -70,6 +70,19 @@ function process_date(m::Model, data)
 
     for fname in features
         data[fname] = fill_date(data[fname])
+    end
+
+    alldates = [[Date(date) for date in data[fname]] for fname in features]
+
+    for i in 1:length(alldates)
+        for j in i+1:length(alldates)
+            fname = "date" * string(i) * string(j)
+            println(fname)
+            data[fname] = [(alldates[i][k] - alldates[j][k]).value for k in 1:length(alldates[i])]
+        end
+    end
+
+    for fname in features
         dates = [Date(date) for date in data[fname]]
         data[fname] = [[Dates.year(date),
                         Dates.month(date),
@@ -167,7 +180,8 @@ function preparedata(m::Model, traindata; output=true)
     atype = gpu() >= 0 ? KnetArray{Float64} : Array{Float64}
     trn = preprocess2(m, traindata)
 
-    xtrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="input"))
+    xtrn = Dict(fname => value for (fname, value) in trn
+                if !in(fname, getfnames(m; ftype="output")))
     xtrn = vcat([atype(hcat(value...)) for (fname, value) in xtrn]...)
 
     if output
