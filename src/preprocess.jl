@@ -138,3 +138,76 @@ function process_image(m::Model, data)
     end
 end
 
+function preprocess(m::Model, data::Dict{String, Array{T,1} where T})
+    preprocessed = copy(data)
+    preprocessed = Dict{String, Array{T,1} where T}(
+        fname => value for (fname, value) in preprocessed
+        if in(fname, getfnames(m, ftype="all")))
+
+    process_string(m, preprocessed)
+    process_int(m, preprocessed)
+    process_float(m, preprocessed)
+    process_bin_category(m, preprocessed)
+    process_category(m, preprocessed)
+    process_date(m, preprocessed)
+
+    preprocessed
+end
+
+function preprocess2(m::Model, data::Dict{String, Array{T,1} where T})
+    preprocessed = copy(data)
+
+    istextmodel(m) && process_text(m, preprocessed)
+    isimagemodel(m) && process_image(m, preprocessed)
+
+    preprocessed
+end
+
+function preparedata(m::Model, traindata; output=true)
+    atype = gpu() >= 0 ? KnetArray{Float64} : Array{Float64}
+    trn = preprocess2(m, traindata)
+
+    xtrn = Dict(fname => trn[fname] for fname in getfnames(m; ftype="input"))
+    xtrn = vcat([atype(hcat(value...)) for (fname, value) in xtrn]...)
+
+    if output
+        ytrn = Dict(fname => trn[fname]
+                    for fname in getfnames(m; ftype="output"))
+        ytrn = vcat([atype(hcat(value...)) for (fname, value) in ytrn]...)
+        ytrn = iscategorical(m) ? Array{Int64}(ytrn) : ytrn
+
+        return xtrn, ytrn
+    end
+
+    return xtrn
+end
+
+function getbatches(m::Model, traindata::Dict{String, Array{T,1} where T};
+                    n=1000, batchsize=32, showtime=true)
+    batches = []
+    trn = preprocess(m, traindata)
+    numexamples = length(iterate(values(trn))[1])
+
+    for i=1:n:numexamples
+        j = (i+n-1) < numexamples ? i+n-1 : numexamples
+        dict = typeof(traindata)(fname => values[i:j] for (fname, values) in trn)
+        x,y = showtime ? @time(preparedata(m, dict)) : preparedata(m, dict)
+        d = minibatch(x,y,batchsize;shuffle=false)
+        push!(batches, d)
+    end
+
+    dx = [d.x for d in batches]
+    dy = [d.y for d in batches]
+
+    dfinal = minibatch(hcat(dx...), hcat(dy...), batchsize; shuffle=true)
+end
+
+function getbatches(m::Model, df::DataFrames.DataFrame; args...)
+    traindata = csv2data(df)
+    getbatches(m, traindata; args...)
+end
+
+function getbatches(m::Model, trainpath::String; args...)
+    traindata = csv2data(trainpath)
+    getbatches(m, traindata; args...)
+end
