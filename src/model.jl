@@ -1,5 +1,5 @@
 using Knet: Knet, AutoGrad, Data, adam, adam!, progress!, minibatch, save, relu,
-    gpu, KnetArray, load, sigm, goldensection
+    gpu, KnetArray, load, sigm, goldensection, hyperband
 using Statistics: mean
 using DataFrames
 using Plots
