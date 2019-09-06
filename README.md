@@ -47,7 +47,7 @@ julia> model = AutoML.Model(hrinputs, hroutputs; name="homerentals")
 
 #### Training the model
 
-After initializing the model, we can use give our model and path of csv file to train it. Default number of epochs is 1, an arbitrary number can be given as a parameter to epochs argument. Train method returns trained model and batc
+After initializing the model, we can use give our model and path of csv file to train it. Default number of epochs is 1, an arbitrary number can be given as a parameter to epochs. `train` method returns trained model and data.
 
 ```julia
 julia> model, dtrn = AutoML.train(model, "data/home_rentals/home_rentals.csv"; epochs=50)
@@ -64,3 +64,21 @@ julia> println("Train error: $err")
 julia> acc = AutoML.accuracy(m.model, dtrn)
 julia> println("Train accuracy: $acc")
 ```
+
+#### Predicting data
+
+Trained model can be used to predict output value of an example. Example is defined as a dictionary where key indicates the feature name and value indicates the value of that column. Finally, we can use `predictdata` method to predict the output.
+
+```julia
+julia> example = Dict("neighborhood" => "downtown",
+                      "number_of_bathrooms" => 1,
+                      "location" => "good",
+                      "days_on_market" => 13,
+                      "initial_price" => 1378,
+                      "number_of_rooms" => 0,
+                      "sqft" => 113.0)
+julia> AutoML.predictdata(model, example)                                                        │
+1×1 Array{Float64,2}:                                                                            │
+ 1347.9081253169932
+```
+                     
