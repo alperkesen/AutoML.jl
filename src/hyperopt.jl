@@ -6,7 +6,7 @@ function goldensectionopt(m::Model, dtrn::Data; showloss=true, cv=false)
         neval += 1
         lr, hidden, pdrop, batchsize = xform(x)
 
-        if hidden < 10000 && 0 <= pdrop <= 1 && 0 < batchsize < 512
+        if hidden < 10000 && 0 <= pdrop <= 1 && 0 < batchsize < 2048
             m.params["lr"] = lr
             m.params["hidden"] = hidden
             m.params["pdrop"] = pdrop
@@ -16,20 +16,20 @@ function goldensectionopt(m::Model, dtrn::Data; showloss=true, cv=false)
                 loss = crossvalidate(m, dtrn; showprogress=true)
             else
                 train(m, dt; showprogress=false, epochs=1, savemodel=false)
-                loss = iscategorical(m) ? 1 - accuracy(m.model, dv) :
-                    m.model(dv.x, dv.y)
+                loss = m.model(dv.x, dv.y)
             end
         else
             loss = NaN
         end
 
-        showloss && println("Loss: $loss")
+        config = xform(x)
+        showloss && println("Loss: $loss, Config: $config")
 
         return loss
     end
 
     function xform(x)
-        lr, hidden, pdrop, batchsize = exp.(x) .* [0.01, 100.0, 0.1, 32]
+        lr, hidden, pdrop, batchsize = exp.(x) .* [0.001, 100.0, 0.5, 64]
         hidden = ceil(Int, hidden)
         batchsize = ceil(Int, batchsize)
         (lr, hidden, pdrop, batchsize)
@@ -63,12 +63,10 @@ function hyperbandopt(m::Model, dtrn::Data; showloss=true, cv=false)
             loss = crossvalidate(m, dtrn; showprogress=true)
         else
             train(m, dt; showprogress=false, epochs=epochs, savemodel=false)
-            loss = iscategorical(m) ? 1 - accuracy(m.model, dv) : m.model(dv.x, dv.y)
             loss = m.model(dv.x, dv.y)
-            acc = 1 - accuracy(m.model, dv)
         end
 
-        showloss && println("Loss: $loss Acc: $acc - Config: $config - Epochs: $epochs")
+        showloss && println("Loss: $loss, Config: $config")
 
         if loss < best[1]
             best = (loss, config, epochs)
@@ -95,7 +93,7 @@ function hyperbandopt(m::Model, dtrn::Data; showloss=true, cv=false)
     m.params["batchsize"] = batchsize
 end
 
-function hyperoptimization(m::Model, dtrn::Data; method="hyperband",
+function hyperoptimization(m::Model, dtrn::Data; method="goldensection",
                            showloss=true, cv=false)
     if method == "goldensection"
         goldensectionopt(m, dtrn; showloss=showloss, cv=cv)
