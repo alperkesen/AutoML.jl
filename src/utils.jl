@@ -1,3 +1,4 @@
+import YAML
 using CSV
 using DataFrames
 using Images: load
@@ -41,6 +42,15 @@ function readtext(filename, dlm=",")
     fdict = Dict{String, Array{T,1} where T}(
         String(features[i]) => [String.(row[i]) for row in rows]
         for i in 1:numfeatures)
+end
+
+function readyaml(filename)
+    yamldict = YAML.load(open(filename))
+    inputfeatures = [(dict["name"], dict["type"])
+                     for dict in yamldict["input_features"]]
+    outputfeatures = [(dict["name"], dict["type"])
+                      for dict in yamldict["output_features"]]
+    return inputfeatures, outputfeatures
 end
 
 function tokenize(text)
