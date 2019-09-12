@@ -15,7 +15,7 @@ First, you have to install AutoML package. Run julia from the command line, set 
 
 AutoML package provides a trained model using a few lines of code. In order to initialize a model, names and types of input features and output features should be given to constructor. Then, we can train our model using path to csv file and initialized model.
 
-### Home Rental Example
+### Home Rentals Example
 
 #### Initializing the model
 
@@ -34,6 +34,7 @@ It has one output column:
 Lists containing tuples of feature names and types should be defined for input and output columns. Using those two lists, we can initialize our model before training it.
 
 ```julia
+julia> import AutoML
 julia> hrinputs = [("neighborhood", AutoML.CATEGORY),
                    ("number_of_bathrooms", AutoML.INT),
                    ("location", AutoML.CATEGORY),
@@ -61,7 +62,7 @@ We can evaluate the performance of our model using accuracy/loss.
 julia> err = model.model(dtrn.x, dtrn.y)
 julia> println("Train error: $err")
 
-julia> acc = AutoML.accuracy(m.model, dtrn)
+julia> acc = AutoML.accuracy(model.model, dtrn)
 julia> println("Train accuracy: $acc")
 ```
 
@@ -77,8 +78,22 @@ julia> example = Dict("neighborhood" => "downtown",
                       "initial_price" => 1378,
                       "number_of_rooms" => 0,
                       "sqft" => 113.0)
-julia> AutoML.predictdata(model, example)                                                        │
-1×1 Array{Float64,2}:                                                                            │
+julia> AutoML.predictdata(model, example)
+1×1 Array{Float64,2}:
  1347.9081253169932
 ```
-                     
+## Default of Credits Example
+
+From command line, you can train a model with one line of code:
+
+```bash
+$ julia src/AutoML.jl --config configs/doc.yaml --train data/default_of_credit/train.csv --epochs 1 --model_name doc
+```
+
+After training, it prints the accuracy and error in training dataset. It saves model in the models folder in the library. So, we can use it to predict the outputs in different datasets.
+
+```bash
+$ julia src/AutoML.jl --predict data/default_of_credit/test.csv --model_path models/doc.jld2
+```
+
+Finally, it prints the accuracy and error in the test dataset.
