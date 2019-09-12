@@ -1,0 +1,55 @@
+input_features:
+  - name: PAY_4
+    type: Int
+  - name: MARRIAGE
+    type: Int
+  - name: PAY_5
+    type: Int
+  - name: LIMIT_BAL
+    type: Int
+  - name: PAY_3
+    type: Int
+  - name: BILL_AMT3
+    type: Int
+  - name: PAY_2
+    type: Int
+  - name: PAY_0
+    type: Int
+  - name: PAY_AMT6
+    type: Int
+  - name : default.payment.next.month
+    type: Int
+  - name: BILL_AMT2
+    type: Int
+  - name: PAY_AMT3
+    type: Int
+  - name: PAY_AMT5
+    type: Int
+  - name: SEX
+    type: Int
+  - name: ID
+    type: Int
+  - name: PAY_AMT2
+    type: Int
+  - name: EDUCATION
+    type: Int
+  - name: BILL_AMT6
+    type: Int
+  - name: AGE
+    type: Int
+  - name: BILL_AMT4
+    type: Int
+  - name: BILL_AMT5
+    type: Int
+  - name: PAY_AMT1
+    type: Int
+  - name: PAY_AMT4
+    type: Int
+  - name: PAY_6
+    type: Int
+  - name: BILL_AMT1
+    type: Int
+
+output_features:
+  - name: default.payment.next.month
+    type: Binary Category

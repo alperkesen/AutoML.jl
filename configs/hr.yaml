@@ -1,0 +1,19 @@
+input_features:
+  - name: neighborhood
+    type: Category
+  - name: number_of_bathrooms
+    type: Int
+  - name: location
+    type: Category
+  - name: days_on_market
+    type: Int
+  - name: initial_price
+    type: Float
+  - name: number_of_rooms
+    type: Int
+  - name: sqft
+    type: Float
+
+output_features:
+  - name: rental_price
+    type: Float
