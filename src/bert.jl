@@ -5,6 +5,7 @@ using CSV
 using PyCall
 using SpecialFunctions: erf
 
+const BERTVOCPATH = joinpath(DATADIR, "bert", "bert-base-uncased-vocab.txt")
 
 gelu(x) = x .* 0.5 .* (1.0 .+ erf.(x ./ sqrt(2.0)))
 std2(a, μ, ϵ) = sqrt.(Knet.mean(abs2.(a .- μ), dims=1) .+ ϵ)

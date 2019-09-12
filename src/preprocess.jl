@@ -113,10 +113,10 @@ function process_text(m::Model, data)
 
     if istextmodel(m) && !haskey(m.extractor, "bert")
         m.extractor["bert"] = PretrainedBert()
-        vocpath = joinpath(DATADIR, "bert", "bert-base-uncased-vocab.txt")
-        m.vocabulary = initializevocab(vocpath)
+
     end
 
+    m.vocabulary == nothing && initializevocab(BERTVOCPATH)
     bert = m.extractor["bert"]
     
     println("Bert...")
