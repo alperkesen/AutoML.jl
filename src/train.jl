@@ -1,26 +1,33 @@
 function train(m::Model, dtrn::Data; epochs=1, showprogress=true,
-               savemodel=false, optimize=false)
-    optimize && hyperoptimization(m, dtrn)
+               issave=true, optimize=false)
+    optimize && hyperoptimization(m, dtrn; showloss=showprogress)
     build(m, dtrn)
     dtrn = minibatch(dtrn.x, dtrn.y, m.params["batchsize"]; shuffle=true)
 
-    showprogress ? progress!(adam(m.model, repeat(dtrn, epochs); lr=m.params["lr"])) :
-        adam!(m.model, repeat(dtrn, epochs); lr=m.params["lr"])
+    showprogress ? progress!(adam(m.model, repeat(
+        dtrn, epochs); lr=m.params["lr"])) : adam!(
+            m.model, repeat(dtrn, epochs); lr=m.params["lr"])
 
-    savemodel && savemodel(m)
+    issave && savemodel(m)
     m, dtrn
 end
 
 function train(m::Model, traindata::Dict{String, Array{T,1} where T};
-               epochs=1, showprogress=true, savemodel=false)
-    dtrn = getbatches(m, traindata; batchsize=m.params["batchsize"])
-    train(m, dtrn; epochs=epochs, showprogress=showprogress, savemodel=false)
+               epochs=1, showprogress=true, issave=true, optimize=false)
+    dtrn = getbatches(m, traindata; batchsize=m.params["batchsize"],
+                      showtime=false)
+    train(m, dtrn; epochs=epochs, showprogress=showprogress, issave=issave,
+          optimize=optimize)
 end
 
-function train(m::Model, trainpath::String; args...)
+function train(m::Model, trainpath::String; epochs=1, showprogress=true,
+               issave=true, optimize=true)
     m.datapath = dirname(trainpath)
-    traindata = csv2data(trainpath)
-    train(m, traindata; args...)
+    extension = splitext(trainpath)[2]
+    traindata = in(extension, (".csv", ".tsv")) ? csv2data(trainpath) :
+        readtext(trainpath)
+    train(m, traindata; epochs=epochs, showprogress=showprogress, issave=issave,
+          optimize=optimize)
 end
 
 function partialtrain(m::Model, trainpath::String)
@@ -31,7 +38,7 @@ end
 
 function partialtrain(m::Model, traindata::Dict{String, Array{T,1} where T})
     dtrn = getbatches(m, traindata; batchsize=m.params["batchsize"])
-    partialtrain(m, traindatao)
+    partialtrain(m, traindata)
 end
 
 function partialtrain(m::Model, dtrn::Data)

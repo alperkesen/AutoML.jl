@@ -15,7 +15,7 @@ function goldensectionopt(m::Model, dtrn::Data; showloss=true, cv=false)
             if cv
                 loss = crossvalidate(m, dtrn; showprogress=true)
             else
-                train(m, dt; showprogress=false, epochs=1, savemodel=false)
+                train(m, dt; showprogress=false, epochs=1, issave=false)
                 loss = m.model(dv.x, dv.y)
             end
         else
@@ -62,7 +62,7 @@ function hyperbandopt(m::Model, dtrn::Data; showloss=true, cv=false)
         if cv
             loss = crossvalidate(m, dtrn; showprogress=true)
         else
-            train(m, dt; showprogress=false, epochs=epochs, savemodel=false)
+            train(m, dt; showprogress=false, epochs=epochs, issave=false)
             loss = m.model(dv.x, dv.y)
         end
 

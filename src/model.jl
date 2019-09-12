@@ -12,7 +12,6 @@ PARAMS = Dict("batchsize" => 32,
               "optimizer" => adam!
               )
 
-
 mutable struct Model
     config::Config;
     name::String
@@ -29,6 +28,7 @@ Model(config::Config; name="model", savedir=SAVEDIR, datadir="",
       voc=nothing, params=PARAMS, extractor=Dict(), fdict=Dict()) = Model(
           config, name, nothing, savedir, datadir, voc, params, extractor,
           fdict)
+
 Model(inputs::Array{Tuple{String, String},1},
       outputs::Array{Tuple{String, String},1};
       name="model", savedir=SAVEDIR, datadir="", voc=nothing, params=PARAMS,
@@ -50,19 +50,28 @@ isimagemodel(m::Model) = in(IMAGE, getftypes(m; ftype="input"))
 istextmodel(m::Model) = in(TEXT, getftypes(m; ftype="input"))
 
 function savemodel(m::Model, savepath=nothing)
-    savepath = savepath == nothing ? joinpath(SAVEDIR, "$(m.name).jld2") : savepath
+    savepath = savepath == nothing ? joinpath(SAVEDIR, "$(m.name).jld2") :
+        savepath
     save(savepath,
          "config", m.config,
+         "name", m.name,
          "model", m.model,
+         "savepath", m.savepath,
          "params", m.params,
-         "vocabulary", m.vocabulary)
+         "extractor", m.extractor,
+         "fdict", m.fdict)
 end
 
 function loadmodel(m::Model, loadpath::String)
     m.config = load(loadpath, "config")
+    m.name = load(loadpath, "name")
     m.model = load(loadpath, "model")
+    m.savepath = load(loadpath, "savepath")
     m.params = load(loadpath, "params")
-    m.vocabulary = load(loadpath, "vocabulary")
+    m.extractor = load(loadpath, "extractor")
+    m.fdict = load(loadpath, "fdict")
+
+    return m
 end
 
 function loadmodel(loadpath::String)
