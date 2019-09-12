@@ -1,13 +1,12 @@
-import AutoML
 import Random
 using Knet: gpu, KnetArray
 
 function train_house_rentals(; epochs=1)
-    hr = AutoML.house_rentals()
+    hr = house_rentals()
     trn, tst = splitdata(hr; trainprop=0.8)
 
-    hrtrn = AutoML.csv2data(trn)
-    hrtst = AutoML.csv2data(tst)
+    hrtrn = csv2data(trn)
+    hrtst = csv2data(tst)
 
     hrinputs = [("neighborhood", "String"),
                  ("number_of_bathrooms", "Int"),
@@ -18,9 +17,9 @@ function train_house_rentals(; epochs=1)
                  ("sqft", "Float")]
     hroutputs = [("rental_price", "Float")]
 
-    model = AutoML.Model(hrinputs, hroutputs; name="houserentals")
-    model, dtrn = AutoML.train(model, hrtrn; epochs=epochs)
-    dtst = AutoML.getbatches(model, hrtst)
+    model = Model(hrinputs, hroutputs; name="houserentals")
+    model, dtrn = train(model, hrtrn; epochs=epochs)
+    dtst = getbatches(model, hrtst)
 
     println("Train error:")
     println(model.model(dtrn.x, dtrn.y))
@@ -32,18 +31,18 @@ function train_house_rentals(; epochs=1)
 end
 
 function train_gene_sequences(; epochs=1)
-    gs = AutoML.splice_junction()
+    gs = splice_junction()
     trn, tst = splitdata(gs, gs.Class; trainprop=0.8)
 
-    gstrn = AutoML.csv2data(trn)
-    gstst = AutoML.csv2data(tst)
+    gstrn = csv2data(trn)
+    gstst = csv2data(tst)
 
     gsinputs = [("attribute_$i", "Category") for i in 1:60]
     gsoutputs = [("Class", "Category")]
 
-    model = AutoML.Model(gsinputs, gsoutputs; name="genesequences")
-    model, dtrn = AutoML.train(model, gstrn; epochs=epochs)
-    dtst = AutoML.getbatches(model, gstst)
+    model = Model(gsinputs, gsoutputs; name="genesequences")
+    model, dtrn = train(model, gstrn; epochs=epochs)
+    dtst = getbatches(model, gstst)
 
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
@@ -58,17 +57,17 @@ function train_cifar_100(; epochs=1, datapath=nothing)
     cifarinputs = [("image_path", "Image")]
     cifaroutputs = [("class", "Category")]
 
-    model = AutoML.Model(cifarinputs, cifaroutputs; name="cifar100")
+    model = Model(cifarinputs, cifaroutputs; name="cifar100")
 
     if datapath == nothing
         println("Preprocessing from scratch...")
-        model, dtrn = AutoML.train(model, AutoML.CIFAR100TRAIN; epochs=epochs)
-        dtst = AutoML.getbatches(model, AutoML.CIFAR100TEST)
+        model, dtrn = train(model, CIFAR100TRAIN; epochs=epochs)
+        dtst = getbatches(model, CIFAR100TEST)
     else
-        datapath = joinpath(AutoML.SAVEDIR, datapath)
+        datapath = joinpath(SAVEDIR, datapath)
         !isfile(datapath) ? throw("Datapath is invalid") : println("Loading data...")
         dtrn, dtst = Knet.load(datapath, "dtrn", "dtst")
-        model, dtrn = AutoML.train(model, dtrn; epochs=epochs)
+        model, dtrn = train(model, dtrn; epochs=epochs)
     end
   
     println("Train accuracy:")
@@ -84,17 +83,17 @@ function train_imdb(; epochs=1, datapath=nothing)
     imdbinputs = [("review", "Text")]
     imdboutputs = [("sentiment", "Category")]
 
-    model = AutoML.Model(imdbinputs, imdboutputs; name="imdbreviews")
+    model = Model(imdbinputs, imdboutputs; name="imdbreviews")
 
     if datapath == nothing
         println("Preprocessing from scratch...")
-        model, dtrn = AutoML.train(model, AutoML.IMDBTRAIN; epochs=epochs)
-        dtst = AutoML.getbatches(model, AutoML.IMDBTEST)
+        model, dtrn = train(model, IMDBTRAIN; epochs=epochs)
+        dtst = getbatches(model, IMDBTEST)
     else
-        datapath = joinpath(AutoML.SAVEDIR, datapath)
+        datapath = joinpath(SAVEDIR, datapath)
         !isfile(datapath) ? throw("Datapath is invalid") : println("Loading data...")
         dtrn, dtst = Knet.load(datapath, "dtrn", "dtst")
-        model, dtrn = AutoML.train(model, dtrn; epochs=epochs)
+        model, dtrn = train(model, dtrn; epochs=epochs)
     end
 
     println("Train accuracy:")
@@ -107,17 +106,17 @@ function train_imdb(; epochs=1, datapath=nothing)
 end
 
 function train_quora(; epochs=1)
-    trn, tst = AutoML.quora_questions()
+    trn, tst = quora_questions()
 
-    quoratrn = AutoML.csv2data(trn)
-    quoratst = AutoML.csv2data(tst[2:end, :])
+    quoratrn = csv2data(trn)
+    quoratst = csv2data(tst[2:end, :])
 
     quorainputs = [("question1", "Text"), ("question2", "Text")]
     quoraoutputs = [("is_duplicate", "Binary Category")]
 
-    model = AutoML.Model(quorainputs, quoraoutputs; name="quora")
-    model, dtrn = AutoML.train(model, quoratrn; epochs=epochs)
-    dtst = AutoML.getbatches(model, quoratst)
+    model = Model(quorainputs, quoraoutputs; name="quora")
+    model, dtrn = train(model, quoratrn; epochs=epochs)
+    dtst = getbatches(model, quoratst)
 
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
@@ -129,18 +128,18 @@ function train_quora(; epochs=1)
 end
 
 function train_default_of_credit(; epochs=1)
-    trn, tst = AutoML.default_of_credit()
+    trn, tst = default_of_credit()
 
-    credittrn = AutoML.csv2data(trn)
-    credittst = AutoML.csv2data(tst)
+    credittrn = csv2data(trn)
+    credittst = csv2data(tst)
     
     creditinputs = [(x[1], "Int") for x in credittrn
                      if x != "default.payment.next.month"]
     creditoutputs = [("default.payment.next.month", "Binary Category")]
 
-    model = AutoML.Model(creditinputs, creditoutputs; name="defaultofcredit")
-    model, dtrn = AutoML.train(model, credittrn; epochs=epochs)
-    dtst = AutoML.getbatches(model, credittst)
+    model = Model(creditinputs, creditoutputs; name="defaultofcredit")
+    model, dtrn = train(model, credittrn; epochs=epochs)
+    dtst = getbatches(model, credittst)
 
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
@@ -152,26 +151,26 @@ function train_default_of_credit(; epochs=1)
 end
 
 function train_prediction_of_return(; epochs=1)
-    portrn, portst = AutoML.prediction_of_return()
+    portrn, portst = prediction_of_return()
 
-    porinputs = [("customerID", AutoML.INT),
-                 ("creationDate", AutoML.DATE),
-                 ("manufacturerID", AutoML.INT),
-                 ("price", AutoML.FLOAT),
-                 ("deliveryDate", AutoML.DATE),
-                 ("salutation", AutoML.CATEGORY),
-                 ("dateOfBirth", AutoML.DATE),
-                 ("state", AutoML.CATEGORY),
-                 ("itemID", AutoML.INT),
-                 ("orderDate", AutoML.DATE),
-                 ("size", AutoML.CATEGORY),
-                 ("color", AutoML.CATEGORY),
-                 ("orderItemID", AutoML.INT)]
-    poroutputs = [("returnShipment", AutoML.BINARYCATEGORY)]
+    porinputs = [("customerID", INT),
+                 ("creationDate", DATE),
+                 ("manufacturerID", INT),
+                 ("price", FLOAT),
+                 ("deliveryDate", DATE),
+                 ("salutation", CATEGORY),
+                 ("dateOfBirth", DATE),
+                 ("state", CATEGORY),
+                 ("itemID", INT),
+                 ("orderDate", DATE),
+                 ("size", CATEGORY),
+                 ("color", CATEGORY),
+                 ("orderItemID", INT)]
+    poroutputs = [("returnShipment", BINARYCATEGORY)]
 
-    model = AutoML.Model(porinputs, poroutputs; name="predictofreturn")
-    model, dtrn = AutoML.train(model, portrn; epochs=epochs)
-    dtst = AutoML.getbatches(model, portst)
+    model = Model(porinputs, poroutputs; name="predictofreturn")
+    model, dtrn = train(model, portrn; epochs=epochs)
+    dtst = getbatches(model, portst)
 
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
@@ -183,21 +182,21 @@ function train_prediction_of_return(; epochs=1)
 end
 
 function train_sensor(; epochs=1)
-    sd = AutoML.sensor()
+    sd = sensor()
     trn, tst = splitdata(sd; trainprop=0.8)
 
-    sdtrn = AutoML.csv2data(trn)
-    sdtst = AutoML.csv2data(tst)
+    sdtrn = csv2data(trn)
+    sdtst = csv2data(tst)
 
-    sdinputs = [("sensor 1", AutoML.INT),
-                ("sensor 2", AutoML.INT),
-                ("sensor 3", AutoML.INT),
-                ("sensor4", AutoML.INT)]
-    sdoutputs = [("output", AutoML.CATEGORY)]
+    sdinputs = [("sensor 1", INT),
+                ("sensor 2", INT),
+                ("sensor 3", INT),
+                ("sensor4", INT)]
+    sdoutputs = [("output", CATEGORY)]
 
-    model = AutoML.Model(sdinputs, sdoutputs; name="sensordata")
-    model, dtrn = AutoML.train(model, sdtrn; epochs=epochs)
-    dtst = AutoML.getbatches(model, sdtst)
+    model = Model(sdinputs, sdoutputs; name="sensordata")
+    model, dtrn = train(model, sdtrn; epochs=epochs)
+    dtst = getbatches(model, sdtst)
 
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
@@ -209,18 +208,18 @@ function train_sensor(; epochs=1)
 end
 
 function train_spam(; epochs=1)
-    spam = AutoML.spam()
+    spam = spam()
     trn, tst = splitdata(spam; trainprop=0.8)
 
-    spamtrn = AutoML.csv2data(trn)
-    spamtst = AutoML.csv2data(tst)
+    spamtrn = csv2data(trn)
+    spamtst = csv2data(tst)
 
-    spaminputs = [("v2", AutoML.TEXT)]
-    spamoutputs = [("v1", AutoML.BINARYCATEGORY)]
+    spaminputs = [("v2", TEXT)]
+    spamoutputs = [("v1", BINARYCATEGORY)]
 
-    model = AutoML.Model(spaminputs, spamoutputs; name="spam")
-    model, dtrn = AutoML.train(model, spamtrn; epochs=epochs)
-    dtst = AutoML.getbatches(model, spamtst)
+    model = Model(spaminputs, spamoutputs; name="spam")
+    model, dtrn = train(model, spamtrn; epochs=epochs)
+    dtst = getbatches(model, spamtst)
 
     println("Train accuracy:")
     println(accuracy(model.model, dtrn))
