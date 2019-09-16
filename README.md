@@ -1,5 +1,4 @@
 # AutoML
-
 AutoML package implemented in Julia using Knet.
 
 ## Getting Started
