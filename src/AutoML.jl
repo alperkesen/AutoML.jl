@@ -100,7 +100,7 @@ function main(args)
 
         println("Error: ", model.model(dtrn.x, dtrn.y))
         println("Accuracy: ", accuracy(model.model, dtrn))
-bo
+
         return
     elseif ispredict
         o[:model_path] == nothing && throw("Model path is missing")
